@@ -556,6 +556,9 @@ need §6.1's fallback), WorkManager ≥ 2.9, Room ≥ 2.6. `minSdk 24`, `compile
 
 ## 10. Build order
 
+Summary only — the full work breakdown, with per-phase exit criteria and the
+parallel content track, is in [PLAN.md](PLAN.md).
+
 Each phase is independently demonstrable.
 
 | # | Phase | Ends when |

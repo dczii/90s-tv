@@ -11,4 +11,5 @@ Channel content is downloaded from a hosted manifest rather than bundled in the 
 Design phase. No implementation yet.
 
 - [PRD](docs/PRD.md) — product requirements (v1.0 MVP)
-- [Architecture](docs/ARCHITECTURE.md) — technical design, decisions, and build order
+- [Architecture](docs/ARCHITECTURE.md) — technical design and decisions
+- [Delivery plan](docs/PLAN.md) — phased work breakdown with exit criteria
