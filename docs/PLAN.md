@@ -17,6 +17,8 @@ show a working thing, which is the property that makes the ordering worth follow
 - **Estimates** are rough dev-days for one developer already comfortable with Android
   and Media3. They are for sequencing, not for committing to a date.
 - Exit criteria are written so they can be *checked*, not judged.
+- Every phase has a **self-contained kickoff prompt** in [`docs/prompts/`](prompts/) —
+  copy one into a fresh session and it carries its own context and scope boundaries.
 
 ---
 
@@ -64,6 +66,8 @@ in a way that sends us back to a design decision.
 
 ## C1 · Source and clear the content — 3–5 days
 
+**Prompt:** [`docs/prompts/content-1-sourcing.md`](prompts/content-1-sourcing.md)
+
 **Goal.** Five channels of legally reusable material, selected and downloaded, within
 the D3 size ceiling.
 
@@ -86,6 +90,8 @@ Finding 70 minutes of *good* public-domain cartoons is genuinely slower than fin
 ---
 
 ## C2 · Transcode pipeline and manifest generator — 2 days
+
+**Prompt:** [`docs/prompts/content-2-pipeline.md`](prompts/content-2-pipeline.md)
 
 **Goal.** A repeatable script that turns a folder of source media into normalised MP4s
 plus a valid `manifest.json`. The manifest is a build artifact; nobody hand-edits it.
@@ -114,6 +120,8 @@ will look like a player bug.
 
 ## C3 · Host and verify — 1 day
 
+**Prompt:** [`docs/prompts/content-3-hosting.md`](prompts/content-3-hosting.md)
+
 **Goal.** Manifest and media reachable over HTTPS with working range requests.
 
 - [ ] Upload to the chosen store (D4)
@@ -140,6 +148,8 @@ or `pip install rangehttpserver && python -m RangeHTTPServer` instead.
 
 ## P0 · Scaffold — 1–2 days
 
+**Prompt:** [`docs/prompts/phase-0-scaffold.md`](prompts/phase-0-scaffold.md)
+
 **Goal.** An installable app on the Google TV home row that shows a black screen.
 
 - [ ] Gradle project, `settings.gradle.kts` with `:core` and `:app`
@@ -163,6 +173,8 @@ whether the Android job can run.
 ---
 
 ## P1 · `:core` — the broadcast clock — 3–4 days
+
+**Prompt:** [`docs/prompts/phase-1-core.md`](prompts/phase-1-core.md)
 
 **Goal.** All the hard logic, pure, deterministic, and covered. No Android anywhere in
 this module.
@@ -203,6 +215,8 @@ the resolver and projector at 100% of branches — it's fifty lines, there's no 
 
 ## P2 · Data layer — 2–3 days
 
+**Prompt:** [`docs/prompts/phase-2-data.md`](prompts/phase-2-data.md)
+
 **Goal.** Manifest fetched, validated, persisted; survives restart and airplane mode.
 
 **Blocked on:** P1 (validator), C3 for a real URL (a local range-capable host works).
@@ -229,6 +243,8 @@ a clean "can't reach the channel guide" state, not a crash.
 ---
 
 ## P3 · Download engine — 4–5 days
+
+**Prompt:** [`docs/prompts/phase-3-downloads.md`](prompts/phase-3-downloads.md)
 
 **Goal.** All five channels download, resume after a kill, and verify.
 
@@ -267,6 +283,8 @@ Airplane-mode mid-download and restore: it retries and completes.
 ---
 
 ## P4 · Player — 4–6 days
+
+**Prompt:** [`docs/prompts/phase-4-player.md`](prompts/phase-4-player.md)
 
 **Goal.** The product, essentially. Channels play at their wall-clock offset and flip
 with the D-pad.
@@ -329,6 +347,8 @@ resume. Press play/pause: it mutes, the picture keeps moving.
 
 ## P5 · Overlays and settings — 2–3 days
 
+**Prompt:** [`docs/prompts/phase-5-overlays.md`](prompts/phase-5-overlays.md)
+
 **Goal.** The app explains itself without ever showing a menu.
 
 **Blocked on:** P4.
@@ -357,6 +377,8 @@ channel 01 before the other four have finished.
 
 ## P6 · Hardening and acceptance — 3–4 days
 
+**Prompt:** [`docs/prompts/phase-6-hardening.md`](prompts/phase-6-hardening.md)
+
 **Goal.** Walk the PRD's acceptance checklist and pass every line.
 
 **Blocked on:** P5.
@@ -381,6 +403,8 @@ channel 01 before the other four have finished.
 ---
 
 ## P7 · Stretch — unscheduled
+
+**Prompt:** [`docs/prompts/phase-7-stretch.md`](prompts/phase-7-stretch.md)
 
 Only after P6 passes. Ordered by value-to-effort.
 
