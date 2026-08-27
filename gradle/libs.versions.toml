@@ -1,0 +1,26 @@
+# Every version is pinned exactly. No `+`, no `latest.release` — this app must build
+# identically in six months (PLAN.md P0, non-negotiable 5).
+
+[versions]
+# Android Gradle plugin and SDK levels.
+# NOTE: pinned without verification — `dl.google.com` is blocked in the environment this
+# scaffold was written in (ARCHITECTURE.md §13), so nothing under `com.android.*` could be
+# resolved to confirm the current stable release. Bump and re-verify on a machine with
+# Google Maven access before treating these as final.
+androidGradlePlugin = "8.13.0"
+compileSdk = "36"
+targetSdk = "36"
+minSdk = "24"
+
+kotlin = "2.2.20"
+jvmTarget = "17"
+
+junit = "4.13.2"
+
+[libraries]
+junit = { module = "junit:junit", version.ref = "junit" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
