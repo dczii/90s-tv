@@ -13,3 +13,4 @@ Design phase. No implementation yet.
 - [PRD](docs/PRD.md) — product requirements (v1.0 MVP)
 - [Architecture](docs/ARCHITECTURE.md) — technical design and decisions
 - [Delivery plan](docs/PLAN.md) — phased work breakdown with exit criteria
+- [Phase prompts](docs/prompts/) — kickoff briefs for each delivery phase
