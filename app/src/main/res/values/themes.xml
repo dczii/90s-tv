@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Fullscreen, no action bar, black from the first frame — the window background
+         is what the user sees during the launch window, so setting it here avoids a
+         white flash before the Activity draws. Everything the Activity needs at
+         Phase 0 is declarative; there is no UI code. -->
+    <style name="Theme.NostalgiaBox" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:colorBackground">@android:color/black</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowDisablePreview">false</item>
+    </style>
+
+</resources>

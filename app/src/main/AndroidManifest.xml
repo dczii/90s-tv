@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- FR14. Both uses-feature declarations are load-bearing:
+
+         leanback required="true"    — declares this as a TV app.
+         touchscreen required="false" — without it the app will not install on, or
+         appear on, a TV device, and the cause is not obvious from the failure. -->
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <application
+        android:allowBackup="false"
+        android:banner="@drawable/banner"
+        android:icon="@mipmap/ic_launcher"
+        android:isGame="false"
+        android:label="@string/app_name"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.NostalgiaBox">
+
+        <activity
+            android:name=".TvActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.NostalgiaBox">
+
+            <!-- LEANBACK_LAUNCHER, not LAUNCHER: this is what puts the app in the
+                 Google TV apps row (FR14). -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

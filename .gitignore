@@ -2,7 +2,15 @@
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
+
+# Android
 local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+.cxx/
 
 # IDE
 .idea/
