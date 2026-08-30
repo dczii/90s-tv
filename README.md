@@ -8,7 +8,10 @@ Channel content is downloaded from a hosted manifest rather than bundled in the 
 
 ## Status
 
-Design phase. No implementation yet.
+Phase P1 complete: `:core`, the broadcast clock, is implemented and tested. It is a
+plain Kotlin/JVM module with no Android dependency, so `./gradlew :core:test` runs
+anywhere a JDK does — no SDK, no emulator. Everything from P2 (data layer) onward is
+still design only.
 
 - [PRD](docs/PRD.md) — product requirements (v1.0 MVP)
 - [Architecture](docs/ARCHITECTURE.md) — technical design and decisions

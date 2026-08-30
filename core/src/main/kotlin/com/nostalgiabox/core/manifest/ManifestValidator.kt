@@ -13,7 +13,22 @@ import com.nostalgiabox.core.model.MediaFile
  */
 object ManifestValidator {
 
-    fun validate(dto: ManifestDto): ManifestResult {
+    /**
+     * Validates [dto] against the schema and against this build.
+     *
+     * [appVersion] is required rather than defaulted on purpose. `minAppVersion` is in
+     * the schema precisely so an operator can publish a manifest that old boxes must
+     * refuse, and a default would let a call site silently opt out of that refusal.
+     * Every caller is made to say what it is.
+     */
+    fun validate(dto: ManifestDto, appVersion: Int): ManifestResult {
+        // Checked before anything else: if this build cannot honour the manifest at
+        // all, a complaint about some channel's blank name is noise on top of it.
+        if (dto.minAppVersion > appVersion) {
+            return ManifestResult.Failure(
+                ManifestError.AppTooOld(requiredVersion = dto.minAppVersion, appVersion = appVersion),
+            )
+        }
         if (dto.channels.isEmpty()) return ManifestResult.Failure(ManifestError.EmptyChannelList)
 
         val warnings = mutableListOf<ManifestWarning>()

@@ -24,8 +24,15 @@ object ManifestParser {
 
     // MissingFieldException is the only way to distinguish "field absent" from
     // "field malformed", and that distinction is what makes the error named.
+    /**
+     * Parses and validates [raw] for a client at [appVersion].
+     *
+     * [appVersion] is threaded through to [ManifestValidator.validate] and is required
+     * for the reason given there: the `minAppVersion` gate must not be skippable by
+     * omission.
+     */
     @OptIn(ExperimentalSerializationApi::class)
-    fun parse(raw: String): ManifestResult {
+    fun parse(raw: String, appVersion: Int): ManifestResult {
         val dto = try {
             json.decodeFromString(ManifestDto.serializer(), raw)
         } catch (e: MissingFieldException) {
@@ -41,6 +48,6 @@ object ManifestParser {
                 ManifestError.Malformed(e.message ?: e::class.simpleName ?: "unknown"),
             )
         }
-        return ManifestValidator.validate(dto)
+        return ManifestValidator.validate(dto, appVersion)
     }
 }

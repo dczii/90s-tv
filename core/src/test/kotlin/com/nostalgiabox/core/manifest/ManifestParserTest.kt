@@ -44,11 +44,14 @@ class ManifestParserTest {
          $extra"channels":[$channels]}
     """.trimIndent()
 
-    private fun failure(json: String): ManifestError =
-        assertIs<ManifestResult.Failure>(ManifestParser.parse(json)).error
+    /** The app version under test. Manifests here declare minAppVersion 1. */
+    private val appVersion = 1
 
-    private fun success(json: String): ManifestResult.Success =
-        assertIs<ManifestResult.Success>(ManifestParser.parse(json))
+    private fun failure(json: String, appVersion: Int = this.appVersion): ManifestError =
+        assertIs<ManifestResult.Failure>(ManifestParser.parse(json, appVersion)).error
+
+    private fun success(json: String, appVersion: Int = this.appVersion): ManifestResult.Success =
+        assertIs<ManifestResult.Success>(ManifestParser.parse(json, appVersion))
 
     // --- the happy path, which is the schema in ARCHITECTURE.md §5.1 verbatim -------
 
@@ -251,7 +254,7 @@ class ManifestParserTest {
             channels = channelJson(id = 1, files = fileJson(durationMs = -5)) + "," +
                 channelJson(id = 2, number = "02"),
         )
-        val result = ManifestParser.parse(oneBadChannel)
+        val result = ManifestParser.parse(oneBadChannel, appVersion)
         assertIs<ManifestResult.Failure>(result)
         assertEquals(ManifestError.NonPositiveDuration(1, "3f7a", -5L), result.error)
     }
@@ -274,7 +277,35 @@ class ManifestParserTest {
                 ),
             ),
         )
-        val manifest = assertIs<ManifestResult.Success>(ManifestValidator.validate(dto)).manifest
+        val manifest = assertIs<ManifestResult.Success>(ManifestValidator.validate(dto, appVersion)).manifest
         assertEquals(10L, manifest.channels.single().files.single().durationMs)
+    }
+
+    // --- the minAppVersion gate ----------------------------------------------------
+
+    @Test
+    fun `a manifest requiring a newer app is rejected whole`() {
+        val json = manifestJson().replace("\"minAppVersion\":1", "\"minAppVersion\":7")
+        assertEquals(ManifestError.AppTooOld(requiredVersion = 7, appVersion = 3), failure(json, appVersion = 3))
+    }
+
+    @Test
+    fun `the gate is checked before any structural complaint`() {
+        // An old box should be told "this manifest is not for you", not handed a
+        // grievance about a channel it was never going to play.
+        val json = manifestJson(channels = channelJson(files = fileJson(durationMs = -5)))
+            .replace("\"minAppVersion\":1", "\"minAppVersion\":9")
+        assertEquals(ManifestError.AppTooOld(requiredVersion = 9, appVersion = 1), failure(json))
+    }
+
+    @Test
+    fun `an app newer than the manifest requires is fine`() {
+        assertEquals(1, success(manifestJson(), appVersion = 99).manifest.channels.size)
+    }
+
+    @Test
+    fun `an app exactly meeting minAppVersion is fine`() {
+        val json = manifestJson().replace("\"minAppVersion\":1", "\"minAppVersion\":4")
+        assertEquals(4, success(json, appVersion = 4).manifest.minAppVersion)
     }
 }

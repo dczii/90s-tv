@@ -4,7 +4,13 @@ Companion to the PRD (v1.0 MVP). This document decides **how** we build what the
 describes, records the alternatives we rejected, and lists the places where the PRD
 itself needs an amendment before implementation starts.
 
-Status: proposed, not yet implemented. Nothing in this repo is built yet.
+Status: `:core` (phase P1) is built. Everything from P2 onward is still proposed.
+
+Sections amended after P1 met the design for the first time: §2.1 and §4.1 (`project`'s
+real signature, and `PlayableSlot`, which was never defined), §5.1 (`minAppVersion`
+gates; `schedule`'s reserved type), §5.3 and §5.4 (storage is globally content-addressed
+— the per-channel directory contradicted diffing by hash), §5.5 and §6.3 (arithmetic
+that was about to land in the player moved into `:core`, where it can be tested).
 
 ---
 
@@ -54,9 +60,13 @@ lost permanently (each box excludes a different set of files).
 manifest**, downloaded or not. Availability is a separate, later projection:
 
 ```
-resolve(now)  ->  IdealSlot(index, offsetMs)      // pure, manifest-derived, stable
-project(ideal) ->  PlayableSlot                    // skips slots whose file is absent
+resolve(lineup, now)                    -> IdealSlot     // pure, manifest-derived, stable
+project(lineup, ideal, availableIds)    -> PlayableSlot? // skips slots whose file is absent
 ```
+
+`project` needs the lineup and the availability set, not just the ideal slot, and it
+needs to be able to say "nothing on this channel is playable" — that is the no-signal
+state in §6.5, and `null` is it. See §4.1 for both types.
 
 A missing file is a hole we skip over, not a slot we delete. When the file finally
 lands it simply starts appearing at its correct time. Corrupt and unplayable files
@@ -194,7 +204,23 @@ data class Lineup(
 )
 
 data class IdealSlot(val index: Int, val offsetMs: Long)
+
+data class PlayableSlot(
+    val index: Int,
+    val offsetMs: Long,
+    val fileId: String,
+    val onClock: Boolean,     // false = we fell forward past a hole; re-sync at the
+)                             //         next boundary, do not correct mid-item
 ```
+
+`onClock` is what makes the first row of the §6.5 failure table expressible. When the
+ideal slot's file is missing we fall forward to the next available one and start it at
+0, which is deliberately off the broadcast clock; the drift corrector (§6.3) must leave
+that alone rather than yanking the picture back the instant a download lands.
+
+The full domain model is larger than the three types above — `Channel`, `MediaFile`,
+`FileStatus` and `Manifest` are the validated forms of the §5.1 schema, and
+`FileStatus` takes its four values from the §5.2 Room column.
 
 ### 4.2 Tune-in
 
@@ -264,6 +290,20 @@ Parsing lives in `:core` with `kotlinx.serialization`, `ignoreUnknownKeys = true
 future fields don't break old installs. A manifest that fails validation is **rejected
 whole** — we never half-apply one, and the previous good manifest keeps serving.
 
+`minAppVersion` **gates**, and it gates here. `ManifestParser.parse(raw, appVersion)`
+and `ManifestValidator.validate(dto, appVersion)` both require the app version rather
+than defaulting it, so no call site can opt out of the check by omission; a manifest
+declaring a higher `minAppVersion` than the running build is rejected whole like any
+other failure, with the named error `AppTooOld`. The gate is evaluated before any
+structural check, so an old box is told "this manifest is not for you" rather than
+handed a complaint about a channel it was never going to play. An out-of-date box
+therefore degrades to *stops taking updates*, never to *shows the wrong thing*.
+
+`schedule` has no declared type anywhere in this document — it is only ever shown as
+`null`. `:core` parses it as an arbitrary JSON value and carries it as its raw text, so
+whatever shape §12 eventually chooses survives a round trip without a schema bump. A
+non-null value raises a `ScheduleIgnored` warning and falls back to loop playback (D5).
+
 ### 5.2 Persistence
 
 **Room** for channels, files, and download state. Not DataStore/JSON: the download
@@ -287,17 +327,35 @@ applied manifest version, last refresh timestamp.
 ### 5.3 Storage layout
 
 ```
-<getExternalFilesDir>/channels/<channelId>/<sha256>.mp4
+<getExternalFilesDir>/media/<sha256>.<ext>
 ```
 
 Content-addressed filenames. This costs nothing and removes a whole class of bug: a
 file changed at the same URL is a different name, so there is no stale-cache case to
 reason about, and update-diffing (§5.4) is a set difference over hashes.
 
+**Amended (was `channels/<channelId>/<sha256>.mp4`).** The per-channel directory
+contradicted §5.4, which diffs by `sha256` alone: the moment one hash is declared by
+two channels — or moves between channels on an update — the diff sees one file to fetch
+and the layout wants two copies of it. Dropping the directory is the smaller of the two
+available fixes, because the rationale above is fully served without it and the
+directory is the only thing that reintroduces duplicate state. **One hash is exactly one
+file on disk, whatever set of channels declares it.** Deduplication across channels
+comes free, and moving a file between channels stops being a re-download.
+
+The cost is that per-channel storage footprint is no longer a directory size. It is the
+sum of `sizeBytes` over the channel's `COMPLETE` files, and a file shared by two
+channels counts against both — which is the honest reading of "what this channel needs
+on disk", and is what §10.1's per-channel progress already displays. `:core`'s
+`MediaPaths` owns the path function so `data/` and `player/` cannot disagree about it.
+
 ### 5.4 Update flow (§10.3)
 
 1. Fetch manifest; parse and validate; compare `version` — bail early if unchanged.
-2. Diff by `sha256`: hashes to add, hashes now orphaned.
+2. Diff by `sha256`: hashes to add, hashes now orphaned. Storage is globally
+   content-addressed (§5.3), so this is a plain set difference over hashes with no
+   per-channel bookkeeping — a hash that merely moved between channels is neither an
+   addition nor an orphan.
 3. Write the new manifest to Room in one transaction. **The lineup changes here** —
    the channel re-phases, which is correct and expected on a content update.
 4. Enqueue downloads for the additions.
@@ -330,7 +388,10 @@ Per file:
 ```
 
 Before enqueueing anything, compare `StatFs` free bytes against
-`sum(sizeBytes) * 1.1` and surface the §8 low-space warning.
+`sum(sizeBytes) * 1.1` and surface the §8 low-space warning. The multiplier lives once,
+in `:core`'s `StorageBudget`, and is computed in integer arithmetic — `100 * 1.1` is
+`110.00000000000001` in binary floating point, so the obvious `ceil(bytes * 1.1)`
+overstates the requirement by a byte for most inputs and cannot be tested exactly.
 
 Retry is WorkManager's exponential backoff. Parallelism is capped at 2 concurrent
 channels so a modest TV box isn't thrashing its flash and its Wi-Fi at once while
@@ -397,10 +458,24 @@ Re-derive and compare on: every `onMediaItemTransition`, a 30s ticker, `onStart`
 `ACTION_TIME_CHANGED` / `ACTION_TIMEZONE_CHANGED`.
 
 ```
-ideal = lineup.resolve(now)
-if (ideal.index != currentIndex || abs(ideal.offsetMs - currentPositionMs) > 2000)
-    player.seekTo(ideal.index, ideal.offsetMs)
+ideal = TuneInResolver.resolve(lineup, now)
+when (DriftCorrector.evaluate(ideal, currentPosition)) {
+    is Hold    -> {}
+    is Correct -> player.seekTo(it.index, it.offsetMs)
+}
 ```
+
+The decision lives in `:core` (`DriftCorrector`), not in the player, because it is
+arithmetic — and arithmetic in the player is arithmetic that needs a television to
+test. It is slightly more than the comparison it replaces:
+
+- **Off-clock playback is never corrected mid-item.** When the projector fell forward
+  past a missing file (§6.5, first row) the index *is* expected to differ from the
+  ideal one. Correcting there would turn every completed download into a visible jump —
+  the symptom amendment A1 exists to prevent, arriving by a different route. We rejoin
+  at the next boundary, where a fresh resolve/project runs anyway.
+- **A wrong index is corrected regardless of the dead zone.** The dead zone is about
+  sub-second jitter within one item; being on the wrong item is not jitter.
 
 The 2-second dead zone matters: correcting small drift produces a visible micro-seek
 every 30 seconds, which is worse than the drift. `elapsedRealtime` is used to

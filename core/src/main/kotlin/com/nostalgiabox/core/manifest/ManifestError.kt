@@ -22,6 +22,20 @@ sealed class ManifestError {
             get() = "Manifest is missing required field(s): ${fields.joinToString()}"
     }
 
+    /**
+     * The manifest declares a `minAppVersion` this build does not meet.
+     *
+     * Rejected whole, like any other failure: the operator has published something
+     * that uses a feature this box cannot honour, and half-honouring it is exactly
+     * the outcome the all-or-nothing rule exists to prevent. The previously validated
+     * manifest keeps serving, so an old box degrades to "stops taking updates" rather
+     * than to "shows the wrong thing" (ARCHITECTURE.md §5.1, §6.5).
+     */
+    data class AppTooOld(val requiredVersion: Int, val appVersion: Int) : ManifestError() {
+        override val message: String
+            get() = "Manifest requires app version $requiredVersion; this build is $appVersion"
+    }
+
     /** A manifest with no channels is a box with no dial. */
     data object EmptyChannelList : ManifestError() {
         override val message: String get() = "Manifest declares no channels"
