@@ -4,6 +4,23 @@ One brief per phase of [the delivery plan](../PLAN.md). Each is self-contained: 
 everything below the rule in a file into a fresh session on this repo, and it carries
 its own context, scope boundaries, and exit criteria.
 
+> [!WARNING]
+> **These prompts predate [QR-YOUTUBE.md](../QR-YOUTUBE.md) and have not been rewritten
+> for it.** Current status of each:
+>
+> | Prompt | Status |
+> |---|---|
+> | `content-1-sourcing`, `content-2-pipeline`, `content-3-hosting` | **Void.** The content track is deleted — content is user-chosen |
+> | `phase-3-downloads` | **Void.** There is no download engine |
+> | `phase-0-scaffold` | Usable, with B6's manifest changes (leanback not required, both launcher categories) |
+> | `phase-1-core` | Usable, with B7's model changes (`sha256`→`videoId`, selection replaces manifest) |
+> | `phase-2-data` | **Replaced** by QR-YOUTUBE.md §7's P2 (selection + pairing + DataStore) |
+> | `phase-4-player` | **Replaced** by §7's P3 (IFrame in a WebView, per B11) |
+> | `phase-5-overlays`, `phase-6-hardening` | Mostly usable; see §7's P4/P5 for the deltas |
+> | `phase-7-stretch` | Reordered, see §9 |
+>
+> Sequencing comes from [QR-YOUTUBE.md §7](../QR-YOUTUBE.md), not from the table below.
+
 ## Order
 
 | Prompt | Phase | Needs Android SDK | Blocked on |

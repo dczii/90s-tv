@@ -6,6 +6,16 @@ itself needs an amendment before implementation starts.
 
 Status: proposed, not yet implemented. Nothing in this repo is built yet.
 
+> [!IMPORTANT]
+> **Partly superseded by [QR-YOUTUBE.md](QR-YOUTUBE.md).** Playback moved from Media3
+> ExoPlayer to the YouTube IFrame Player API in a WebView, and content moved from
+> downloaded MP4s to a LAN-paired YouTube selection. §5 (data layer, downloads, manifest
+> schema), §6 (player), §8 (content pipeline) and amendments A1–A5 are struck or rewritten
+> there (B7–B15). §1's wall-clock invariant and most of §4 (`:core`) survive intact — as
+> does A6, no MediaSession, for the same reason. The cross-device sync property in §1 does
+> not survive.
+
+
 ---
 
 ## 1. The one idea the whole app hangs on

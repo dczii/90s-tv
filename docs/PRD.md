@@ -5,6 +5,15 @@
 **Version:** 1.0 (MVP)
 **Last updated:** 2026-08-26
 
+> [!IMPORTANT]
+> **Partly superseded by [QR-YOUTUBE.md](QR-YOUTUBE.md).** Content is no longer downloaded
+> from a hosted manifest. The app now shows a QR code on first run; a phone on the same
+> Wi-Fi picks up to 5 YouTube videos, which become 5 channels. §5 (content delivery), §6
+> (the five themed channels), FR10–FR13, the offline NFRs and §11's download/offline
+> acceptance lines are struck or amended there (B1–B6, §8). §13's open questions are void.
+> Everything about the broadcast illusion itself — FR1–FR9, FR14 — still stands.
+
+
 ---
 
 ## 1. Overview

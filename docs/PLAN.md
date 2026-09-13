@@ -7,6 +7,14 @@ document wins on *how* and the PRD wins on *what*.
 Every phase below ends in something demonstrable. You can stop after any of them and
 show a working thing, which is the property that makes the ordering worth following.
 
+> [!IMPORTANT]
+> **Superseded by [QR-YOUTUBE.md §7](QR-YOUTUBE.md).** The content track (C1–C3) and the
+> download engine (P3) are deleted; a new P−1 hardware spike and a P2 selection/pairing
+> phase replace them. Decisions D1–D5 are void; D6 survives and now names the device the
+> IFrame spike runs on. Use §7 there for sequencing; this file remains accurate only for
+> P0 and (with B7's amendments) P1.
+
+
 ---
 
 ## How to read this
