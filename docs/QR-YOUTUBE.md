@@ -61,6 +61,7 @@ Settled. These are the inputs every amendment below derives from.
 | E6 | Launch behaviour | **Straight to TV.** The QR lives in the existing hidden settings screen as "change videos" |
 | E7 | Pairing trust | **Open — anything on the LAN may post.** No token. Accepted risk, see B12 |
 | E8 | Phone selection UI | **The same web page, loaded in-app** — one HTML asset, two transports |
+| E9 | Division of responsibility | **The paired web page never plays video — it only collects links. All playback lives in the installed app** (B16) |
 
 Decisions **D1–D5** from PLAN.md Phase −1 are void (they concern manifests, hosting and
 content size). **D6** (name one specific acceptance device) survives and matters more
@@ -81,6 +82,23 @@ than before: it is now the device the IFrame spike runs on.
 4. User presses **Confirm**. The page POSTs the list to the TV.
 5. TV stores the selection, builds 5 channels, and tunes to channel 01 at its
    wall-clock offset. The pairing screen disappears.
+
+### 3.1.1 The division of responsibility (E9)
+
+The scanned page and the app are two different things and must not drift toward each
+other. This is the rule:
+
+| | Paired web page (in a phone browser) | Installed app (TV or phone) |
+|---|---|---|
+| **Purpose** | Collect up to 5 YouTube links. That is all | Show the QR, and be the television |
+| **Plays video** | **Never** | Yes — the only place playback happens |
+| **Holds the 90s TV design** | No. It is a plain, fast form | Yes — channel bug, no-signal slate, static, all of it |
+| **Knows the wall clock** | No. It has no notion of channels or offsets | Yes. `resolve(now)` lives here |
+| **Lifetime** | Seconds, while someone is pasting links | The life of the install |
+| **Served by** | The app's embedded LAN server, while pairing is open | n/a |
+
+The web page is an **input surface**. It hands over a list of video IDs and is done. It
+never learns what is playing, never renders a player, and is never the product.
 
 ### 3.2 Everyday use
 
@@ -415,6 +433,36 @@ last-watched channel, and a log ring buffer. That is a handful of records.
 DAOs, drop the migrations.** Hilt stays — it is still the right shape for the remaining
 wiring, and it is less work than hand-rolling it.
 
+### B16 · Two HTML surfaces, and the LAN server serves only one of them (E9)
+
+The design contains two HTML pages, which are easy to conflate and must not be:
+
+| | **Selection page** | **Player page** |
+|---|---|---|
+| Does | Collects up to 5 links | Runs the YouTube IFrame player |
+| Served from | The embedded LAN server (B12), and loaded in-app on phone via `WebViewAssetLoader` (B13) | `WebViewAssetLoader` only — `https://appassets.androidplatform.net/` |
+| Reachable from the LAN | **Yes, by design** | **No. Never** |
+| Contains a `<video>` or an IFrame player | No | Yes |
+| Contains the TV design | No | It *is* the picture; the design overlays it in Compose |
+
+**The constraint, stated so it can be tested:** the embedded LAN server exposes
+`GET /`, `GET /state` and `POST /selection` and **nothing else**. No static-file handler,
+no directory serving, no route that can reach the player page or any other app asset. A
+LAN peer must be able to submit links and read back the current selection, and must not
+be able to fetch anything else out of the app.
+
+Two practical consequences:
+
+1. **Do not implement the server with a catch-all static handler** pointed at the assets
+   directory. It is the obvious convenience and it would expose the player page, the
+   JS bridge surface, and whatever else ships in assets. Register the three routes
+   explicitly.
+2. **The player page keeps its own origin.** It stays on the asset-loader HTTPS origin
+   rather than being served off the LAN port, which is why B11 recommended that host in
+   the first place. Moving it to the LAN server to "reuse the plumbing" would give it an
+   `http://` origin, require a cleartext exemption, and put the player one URL guess away
+   from any device on the network. Don't.
+
 ---
 
 ## 7. Revised delivery plan
@@ -463,7 +511,8 @@ which is still why the module split is worth having.
 
 **P2 · Selection, pairing and persistence — 3–4 days.** New, replacing old P2+P3.
 
-- [ ] Embedded HTTP server, LAN-bound, **running only while the pairing screen is open** (B12)
+- [ ] Embedded HTTP server, LAN-bound, **running only while the pairing screen is open** (B12),
+      with **exactly three explicitly registered routes and no static-file handler** (B16)
 - [ ] QR rendering (ZXing), with the URL in large text and the Wi-Fi network name beneath
 - [ ] The selection page: paste URL or ID, thumbnail preview via `img.youtube.com`,
       client-side ID extraction and validation, reorder, confirm
@@ -473,7 +522,9 @@ which is still why the module split is worth having.
 
 **Exit.** Pair from a phone, kill the app, relaunch: the selection persisted and the app
 goes straight to playback (E6). Post a malformed ID, an 80-char ID, 9 videos, and a
-10 MB body — all four rejected without a crash.
+10 MB body — all four rejected without a crash. `curl` the LAN port for the player page,
+for `../` traversal, and for any other asset path — all refused (B16). The page itself
+renders no player on any device.
 
 **P3 · Player — 4–6 days.** Per B11. The risk concentration, as before, but the risk has
 moved: it is now WebView behaviour rather than decode performance, and P−1 has already
@@ -542,6 +593,9 @@ Replacing PRD §11.
 - [ ] Network loss shows a no-signal slate with a cause, and recovers automatically
       without a keypress or restart
 - [ ] On a phone build, the selection page opens in-app and swipe/tap gestures work
+- [ ] The paired web page plays no video and renders no player — it collects links only (E9)
+- [ ] The LAN server answers only `GET /`, `GET /state` and `POST /selection`. Requests for
+      the player page, or any other app asset, are refused (B16)
 
 Struck from §11: the download, offline, and resume-interrupted-download lines.
 
@@ -597,6 +651,8 @@ Struck from §11: the download, offline, and resume-interrupted-download lines.
    titles and thumbnails for one HTTP call. Cheap to change now, annoying later.
 3. **What does a 1-video selection do on up/down?** Wrapping to itself looks broken.
    Suppress the keypress, or show the bug and nothing else? A UX call (B3).
-4. **Does the phone build actually play video, or only select?** B6 assumes it is a full
-   second screen. If it is only a remote-control-and-picker for the TV, the player work
-   halves and B14 mostly disappears.
+4. ~~**Does the phone build actually play video, or only select?**~~ **Resolved (E9).**
+   Playback lives in the installed app on every form factor, so the phone/tablet build is
+   a full second screen: it shows the QR, and it plays. B6 and B14 stand as written. What
+   is settled alongside it is the stronger half of the rule — the *paired web page* never
+   plays anything on any platform (B16).
