@@ -1,17 +1,37 @@
-# Nostalgia Box — Product Requirements Document (PRD)
+# Timed YouTube TV — Product Requirements Document (PRD)
 
-**Product:** Nostalgia Box
+**Product:** Timed YouTube TV
 **Platform:** Google TV (Android TV OS)
 **Version:** 1.0 (MVP)
-**Last updated:** 2026-08-26
+**Last updated:** 2026-09-14
+
+This document is the product spec. How the app is built is
+[`ARCHITECTURE.md`](ARCHITECTURE.md). Delivery steps live in
+[`REACT_NATIVE_PLAN.md`](REACT_NATIVE_PLAN.md). Timer phases, confirmation,
+ranges, and the enforcement paragraph are law in
+[`youtube-timer/01-product-and-timer-rules.md`](youtube-timer/01-product-and-timer-rules.md)
+(`YT-D1`–`YT-D7`). If this file drifts, that file wins.
+
+The original broadcast/download PRD (Nostalgia Box, FR1–FR15, old §11) is
+retired. [`PLAN.md`](PLAN.md) and [`prompts/`](prompts/) are historical.
 
 ---
 
 ## 1. Overview
 
-Nostalgia Box is a self-contained Android TV app that recreates the feeling of old broadcast television: algorithm-free, menu-free, "just watch what's on." On launch, a channel is already playing mid-program (based on wall-clock time), and the D-pad flips channels like an old antenna TV. There is no pausing, no rewinding, and no content selection menu — the lean-back, no-choice experience is the entire point.
+Timed YouTube TV is a parent-configured YouTube timer for Android TV. A parent
+sets a PIN, watch and rest durations, and an allowlist of YouTube videos or
+playlists. A child watches that curated YouTube **inside this app** for a
+bounded window, then sits on a rest screen until an explicit **Continue
+watching** press.
 
-Unlike the original inspiration (which loaded content locally), **channel content is downloaded from an online source** so the box can be provisioned and updated over the network. The MVP ships with **5 channels**.
+The player is an official YouTube IFrame inside a WebView this app destroys
+when the watch window ends. There is no downloaded YouTube cache, no channel
+flip, and no “already playing mid-program” illusion.
+
+This app limits watching only while you use it. It cannot block the YouTube
+app, and it cannot stop someone from uninstalling this app, clearing its
+data, or changing the TV clock.
 
 ---
 
@@ -19,151 +39,237 @@ Unlike the original inspiration (which loaded content locally), **channel conten
 
 ### Goals (MVP)
 
-- Recreate the broadcast-TV illusion: always-on, mid-program tune-in, no pause/rewind.
-- Ship **5 channels**, each a themed loop/schedule of video content.
-- **Download channel content from an online link** (a hosted manifest + media files), not bundled in the APK.
-- Run entirely inside a Google TV — no companion device or server required at runtime.
-- D-pad channel flipping with an on-screen channel bug.
+- Bound a watch window and a rest window with parent-set durations.
+- Require **Continue watching** before every new watch window, including the
+  first launch after setup.
+- Persist deadlines across process death and TV reboot so closing the app
+  cannot reset either timer.
+- Play only parent-allowlisted YouTube video IDs, in-process, via the IFrame
+  Player API.
+- Gate duration changes, cycle reset, content, and YouTube account actions
+  behind a parent PIN after the first-run wizard.
 
 ### Non-Goals (MVP)
 
-- No live streaming / real broadcast feeds.
-- No user accounts, profiles, or cloud sync.
-- No content-creation or upload tooling.
-- No pause, rewind, DVR, or on-demand selection.
-- No monetization, ads, or analytics beyond basic local logging.
-- CRT shader and static transitions are **stretch**, not required for MVP acceptance.
+- No device-wide YouTube blocking, app pinning, or uninstall protection.
+- No download, extract, or local cache of YouTube media.
+- No launching the official YouTube app (`vnd.youtube` / `ACTION_VIEW`).
+- No accounts, cloud sync, or profiles beyond one on-device parent PIN and
+  one optional Google session for `youtube.readonly`.
+- No pause/rewind DVR of the watch clock. Pause is a player control inside
+  `Playing`; elapsed watch time still advances.
+- No phone app, no Apple TV, no companion device.
+- CRT shaders, ads stripping, and “make the iframe ad-free” are out.
 
 ---
 
 ## 3. Target User
 
-A household (often with kids) that wants curated, calming, choice-free TV — no infinite scroll, no autoplay rabbit holes, no algorithm. The primary operator is technical (able to host files and configure a manifest URL); the day-to-day users just press power and channel up/down.
+**Parent + child on one Android TV.** The parent sets policy. The child uses
+Continue watching, the YouTube iframe controls, and nothing that changes
+policy. This replaces the technical operator who hosted a manifest URL.
 
 ---
 
 ## 4. Key Concepts
 
-- **Channel:** A named, ordered playlist of video files with a total duration and optional daily schedule.
-- **Manifest:** A JSON file, hosted online, describing all channels and where to fetch their media.
-- **Tune-in offset:** The wall-clock-derived position a channel is at when you switch to it, so it always feels "already running."
+- **Phase:** One of `Setup`, `AwaitingConfirmation`, `Playing`, `Resting`.
+  There is no `Paused` phase. Pause is a player state inside `Playing`.
+- **Watch window:** The interval that starts on **Continue watching** and
+  ends at the watch deadline. Remaining time is not credited back for pause,
+  buffer, or backgrounding.
+- **Rest window:** Starts at the watch-expiry instant (even if the process
+  is dead then). Ends at rest deadline. The player must not exist.
+- **Continue watching:** The only command that opens a **new** watch window.
+  Restoring into a still-valid `Playing` may rebuild the player; that is not
+  a new window.
+- **Allowlist:** Parent-selected YouTube video and playlist IDs. Playlists
+  expand to video IDs; the player loads videos only.
+- **PIN verifier:** A salted hash stored on device. The PIN itself is never
+  stored. First-run wizard Connect/picker is not PIN-gated; Parent settings
+  mutations are.
 
 ---
 
-## 5. Content Delivery (Online Download)
+## 5. Timer policy
 
-### 5.1 Source of truth: a hosted manifest
+Copied from YouTube-timer 01. Do not fork.
 
-The app is configured with a single **manifest URL** (settings screen or build-time constant). On first run and on refresh, the app fetches this manifest and downloads the referenced media.
+### 5.1 Phase machine (`YT-D1`)
 
-Example `manifest.json`:
-
-```json
-{
-  "version": 1,
-  "updatedAt": "2026-08-26T00:00:00Z",
-  "channels": [
-    {
-      "id": 1,
-      "name": "Cartoons",
-      "number": "01",
-      "files": [
-        { "url": "https://cdn.example.com/ch1/toon-a.mp4", "durationSec": 640, "sha256": "..." },
-        { "url": "https://cdn.example.com/ch1/toon-b.mp4", "durationSec": 720, "sha256": "..." }
-      ],
-      "schedule": null
-    }
-  ]
-}
+```
+Setup --completeSetup--> AwaitingConfirmation
+AwaitingConfirmation --confirmWatching--> Playing
+Playing --watch deadline--> Resting
+Resting --rest deadline--> AwaitingConfirmation
+Playing|Resting|AwaitingConfirmation --resetCycle--> AwaitingConfirmation
+Playing --recovered past watch+rest--> AwaitingConfirmation
 ```
 
-- Each file entry carries a **URL**, **duration** (so the app can compute offsets without probing), and an optional **sha256** for integrity.
-- `schedule` is optional; `null` means "pure loop."
+All other transitions are illegal (`IllegalTransition`). `completeSetup` is
+the only path out of `Setup`. Commands never autoplay. `tick` is the only
+path that expires a phase.
 
-### 5.2 Download behavior
+`Setup` ends when a PIN verifier and a timer policy are stored. The
+allowlist may still be empty: Continue watching is disabled until at least
+one entry exists. That is UI gating, not a fifth phase.
 
-- On first launch: fetch manifest → download all media to app-private/external storage → show a simple "Setting up your channels…" progress screen.
-- Downloads run with **WorkManager** (survives app restart, retries on failure, resumes where possible).
-- Verify each file's `sha256` if provided; re-download on mismatch.
-- Support partial availability: a channel becomes playable as soon as at least one of its files is downloaded; the rest fill in.
-- **Refresh:** manual "Update channels" action in a hidden settings screen, plus an optional periodic background check (e.g. daily) comparing manifest `version`.
-- **Offline resilience:** once downloaded, everything plays with no network. Network is only needed for initial provisioning and updates.
+### 5.2 When the watch clock starts (`YT-D2`)
 
-### 5.3 Storage
+The watch clock starts in `confirmWatching`, at that moment. It does **not**
+start on app launch, on leaving Setup, on rest expiry, or on composing the
+confirmation screen.
 
-- Media stored under app external files dir (`getExternalFilesDir`), one subfolder per channel.
-- Cache eviction is out of scope for MVP (assume enough storage for 5 channels); log total footprint.
+`remainingMs` is `0` in `Setup` and `AwaitingConfirmation`. In `Playing` it
+is time until the watch deadline; in `Resting`, until the rest deadline.
+
+Confirmation copy (“15 minutes available”) is always the configured watch
+duration — a fresh window — not leftover time from a killed session.
+Leftover time exists only if we restore into `Playing` (process death
+mid-watch).
+
+### 5.3 Rest anchoring (`YT-D3`)
+
+Rest starts at the **watch-expiry instant**, even if the process is dead
+when that instant passes.
+
+On recover / `tick`:
+
+1. If `phase == Playing` and `now` is past the watch deadline, rest deadline
+   = watch deadline + rest duration. Do not use restore-`now` as the rest
+   start.
+2. If that rest deadline is also already past, go to `AwaitingConfirmation`.
+   Do not skip confirmation. Do not open a player.
+3. If `phase == Resting` and `now` is past the rest deadline, go to
+   `AwaitingConfirmation` with no player.
+
+### 5.4 Confirmation (`YT-D4`)
+
+Required after every rest, including the first launch after setup. Required
+after a recovery that skipped a fully elapsed rest. Never skipped because
+the allowlist is “ready,” because the app just updated, or because the
+previous session ended cleanly.
+
+### 5.5 Defaults and ranges (`YT-D5`)
+
+| | Default | Min | Max | Step |
+|---|---|---|---|---|
+| Watch | 15 min | 5 min | 60 min | 5 min |
+| Rest | 30 min | 5 min | 180 min | 5 min |
+
+Values are stored as milliseconds. Policy validation rejects anything off
+the step grid. No rule that rest must exceed watch.
+
+### 5.6 Screens (when they appear)
+
+| Brief screen | When it appears |
+|---|---|
+| Welcome / Parent setup | First launch; `Setup` |
+| Timer setup | First launch; durations + PIN create |
+| Connect YouTube | First-run wizard (not PIN-gated) or Parent settings (PIN-gated) |
+| Choose allowed content | First-run wizard (not PIN-gated) or Parent settings (PIN-gated) |
+| Ready / Continue watching | `AwaitingConfirmation` |
+| Playback | `Playing` only |
+| Rest timer | `Resting` — player absent |
+| Parent settings | PIN-gated; available from rest and from confirmation as a secondary action |
+
+Visual direction: near-black navy, warm off-white, coral primary, amber only
+for time warnings. D-pad, 1920×1080, 5% safe area.
 
 ---
 
-## 6. The 5 Channels (MVP)
+## 6. Enforcement limits
 
-Exact content is defined by the hosted manifest, but the MVP targets 5 distinct themed channels, e.g.:
+### 6.1 Parent-facing copy (`YT-D7`) — verbatim
 
-| # | Channel | Theme |
-|---|---------|-------|
-| 01 | Cartoons | Vintage public-domain animation |
-| 02 | Nature | Calm wildlife / landscapes |
-| 03 | Rabbit (Kids) | Gentle kids' storytime content |
-| 04 | Retro Ads | Nostalgic commercials & bumpers |
-| 05 | Classics | Old public-domain shorts / serials |
+Welcome shows this as the small note. Parent settings shows it again under
+the policy summary. Do not soften it.
 
-Content should be sourced from legally reusable material (e.g. public-domain collections on the Internet Archive) and transcoded to a uniform codec (H.264 video / AAC audio) before hosting.
+> This app limits watching only while you use it. It cannot block the
+> YouTube app, and it cannot stop someone from uninstalling this app,
+> clearing its data, or changing the TV clock.
+
+### 6.2 Residual risks (product, not bugs)
+
+| Risk | Honest status |
+|---|---|
+| Child opens the official YouTube app | Out of process. Not solvable here. |
+| Uninstall / disable this app | Out of process. |
+| Clear app data | Wipes PIN, policy, deadlines, allowlist, tokens. Next launch is Setup. |
+| Wall-clock rollback after a reboot | Accepted. In-boot expiry does not use wall clock. |
+| Offline cracking of a 4-digit PIN verifier | Accepted. Threat model is the child with the remote, not `adb pull`. |
+
+### 6.3 Playback constraints
+
+- IFrame Player API in a WebView this process owns. `loadVideo` only.
+- Never download or extract YouTube streams.
+- Never launch the official YouTube app.
+- Unplayable IDs (embedding-disabled, removed, private, and the documented
+  IFrame errors) are skipped. If none remain, show an error; do not crash.
 
 ---
 
 ## 7. Functional Requirements
 
-### 7.1 Playback
+Numbered FRs are the ten green lines in YouTube-timer 05 (`YT-D29`). Old
+FR1–FR15 (tune-in, five channels, download, play/pause-does-not-pause) are
+gone.
 
-- **FR1:** On app launch, immediately begin playing the last-watched channel (or channel 01 on first run) at its wall-clock offset — no home menu.
-- **FR2:** Compute tune-in position as `(epochSeconds) % channelTotalDurationSec`, resolve to file + intra-file offset, and seek there.
-- **FR3:** Loop each channel's playlist indefinitely.
-- **FR4:** If a channel has a `schedule`, resolve the current program by time-of-day instead of pure loop.
-
-### 7.2 Channel switching
-
-- **FR5:** D-pad **Up/Down** (and `CHANNEL_UP`/`CHANNEL_DOWN`) switch channels, wrapping around the 5 channels.
-- **FR6:** On switch, recompute the tune-in offset for the new channel and seek.
-- **FR7:** Show a **channel bug** overlay ("CH 03 · Rabbit") for ~3 seconds on switch, then fade out.
-
-### 7.3 Broadcast illusion
-
-- **FR8:** Ignore the play/pause key (or make it mute-only); the timeline never stops.
-- **FR9:** No rewind, fast-forward, or seek controls exposed to the user.
-
-### 7.4 Provisioning & updates
-
-- **FR10:** Fetch the manifest from the configured URL and download all referenced media.
-- **FR11:** Show setup progress on first run; resume interrupted downloads.
-- **FR12:** Provide a hidden/long-press settings screen to set/change the manifest URL and trigger "Update channels."
-- **FR13:** Verify file integrity via sha256 when present.
-
-### 7.5 Lifecycle
-
-- **FR14:** Appear on the Google TV home row via the leanback launcher intent.
-- **FR15 (optional):** Auto-launch on device boot for "turn on = TV's on" behavior.
+- **FR1:** The app installs on Google TV and appears in the Apps row/tab
+  with a Leanback launcher entry, a 320×180 banner, landscape, and
+  keep-screen-on. Touchscreen is not required.
+- **FR2:** First run: parent sets PIN and a legal watch/rest pair at Timer
+  setup Save (`completeSetup` → `AwaitingConfirmation`). Connect and picker
+  in the wizard are **not** PIN-gated. The flow lands on confirmation with
+  an allowlist (account **or** manual links) and **no** player.
+- **FR3:** Continue watching starts playback of an allowlisted **video** id
+  in-WebView (playlists expanded; `loadVideo` only) and starts the watch
+  clock.
+- **FR4:** Pause, buffer, and Home/background during `Playing` do not
+  extend remaining. Home pauses WebView audio; the clock still runs.
+- **FR5:** At watch expiry the WebView is gone and rest UI is on screen.
+- **FR6:** At rest expiry confirmation is on screen and **no** WebView
+  exists; Continue watching is required.
+- **FR7:** Process kill and device reboot during `Playing` and during
+  `Resting` restore remaining (or confirmation if both elapsed); never a
+  fresh unearned window; never autoplay after rest.
+- **FR8:** PIN required for duration change, reset, content, and YouTube
+  connect/disconnect **from Parent settings**. Wizard Connect/picker is not
+  gated. Continue watching is not PIN-gated.
+- **FR9:** Unplayable ids are skipped on definitive probe negatives;
+  `NoPlayableItem` if none; transport/401/quota keep last-known; no crash.
+- **FR10:** No YouTube media files in app storage; no `vnd.youtube`
+  launches.
 
 ---
 
 ## 8. Non-Functional Requirements
 
-- **Performance:** Channel switch completes in < 1s once media is downloaded; no visible buffering for local files.
-- **Reliability:** Downloads retry with backoff; app never crashes on a missing/corrupt file — it skips to the next file and logs.
-- **Resilience:** Fully functional offline after initial provisioning.
-- **Compatibility:** Google TV / Android TV, min SDK ~21, D-pad-only navigation (no touch assumptions).
-- **Footprint:** MVP assumes storage sufficient for 5 channels; warn if free space is low before downloading.
+- **Navigation:** D-pad only. No touch-only hit targets. Focus readable
+  from three metres. Primary actions inside a 5% TV safe area.
+- **Compatibility:** Android TV / Google TV, `minSdk 24`. Phone and Apple
+  TV are out of v1.
+- **Identity:** `applicationId` `com.nostalgiabox.tv`. Display name Timed
+  YouTube TV.
+- **Clock:** Elapsed watch time uses a monotonic clock while the boot is
+  unchanged. Reboot recovery may use wall clock. Clock rollback after
+  reboot is a residual risk, not a fail.
+- **Privacy:** No analytics. OAuth scope is `youtube.readonly` only.
+- **Network:** Playback needs network. Offline-after-provision is **not**
+  a requirement (that belonged to the downloaded-media product).
 
 ---
 
 ## 9. Technical Approach (reference, not binding)
 
-- **Kotlin**, Android TV app.
-- **ExoPlayer (AndroidX Media3)** for playback, looping, seeking, and (stretch) GL shader effects.
-- **WorkManager** for resumable, retrying downloads.
-- **OkHttp/Retrofit** (or Media3's own) for fetching manifest + files.
-- Single full-screen **player Activity**; Leanback library only if a guide screen is added later.
-- Manifest + media hosted on any static host / CDN / object storage reachable by URL.
+Binding architecture is [`ARCHITECTURE.md`](ARCHITECTURE.md). This track
+builds an Expo TV app (`react-native-tvos`) with a Node-testable TypeScript
+domain package. The player is a custom native WebView with
+`WebViewAssetLoader`, not stock `react-native-webview`.
+
+Retired from the old PRD: ExoPlayer/Media3, WorkManager media downloads, a
+hosted manifest of video files, five themed channels, and wall-clock
+tune-in.
 
 ---
 
@@ -171,54 +277,90 @@ Content should be sourced from legally reusable material (e.g. public-domain col
 
 ### 10.1 First run
 
-1. App launches → checks for local media → none found.
-2. Fetches manifest from configured URL.
-3. Shows "Setting up your channels…" with per-channel progress.
-4. As soon as channel 01 has a playable file, starts playing at its wall-clock offset.
-5. Remaining media downloads in the background.
+1. Welcome → Timer setup (defaults 15/30, PIN create + confirm).
+2. Save → `completeSetup`. Phase is `AwaitingConfirmation`. No player.
+3. Connect YouTube **or** “Use links instead” (not PIN-gated).
+4. Choose allowed content → Ready. Continue watching stays disabled until
+   the allowlist is non-empty.
+5. Continue watching → `Playing`.
 
-### 10.2 Everyday use
+### 10.2 Everyday
 
-1. Power on → app auto-launches (if enabled) → channel already playing mid-program.
-2. D-pad up/down to flip channels; bug flashes on each switch.
-3. Power off — no save prompts, no menus.
+1. Launch → recover phase.
+2. If `Playing`, rebuild player with remaining time.
+3. If `Resting`, rest UI, no player.
+4. If `AwaitingConfirmation`, confirmation, no player.
+5. Never Setup unless data was cleared.
 
-### 10.3 Updating content
+### 10.3 Watch expiry
 
-1. Operator opens hidden settings (e.g. long-press OK, or a key combo).
-2. Selects "Update channels" (or app auto-checks daily).
-3. App compares manifest `version`; downloads new/changed files; keeps playing during download.
+`tick` → `Resting` → destroy player → rest countdown. Rest expiry →
+`AwaitingConfirmation` → still no player.
+
+### 10.4 Parent settings
+
+From rest or confirmation, as a secondary action. PIN gate, then policy
+summary, duration steppers, content, YouTube connect/disconnect, reset
+cycle.
 
 ---
 
-## 11. Acceptance Criteria (MVP "done")
+## 11. Acceptance Criteria (MVP “done”)
 
-- [ ] App installs on Google TV and appears on the home row.
-- [ ] On first run, app downloads all 5 channels from the hosted manifest URL.
-- [ ] A channel begins playing automatically on launch, mid-program, with no menu.
-- [ ] D-pad up/down flips through all 5 channels with a channel bug overlay.
-- [ ] Tune-in position is time-based (switching away and back lands at the "live" position, not the start).
-- [ ] Play/pause does not pause the broadcast; no rewind/seek is possible.
-- [ ] After provisioning, the app works with the network disconnected.
-- [ ] Interrupted downloads resume and complete without a full restart from zero.
+Replaces the old eight boxes (install, download 5 channels, autoplay
+mid-program, D-pad flip, wall-clock tune-in, play/pause, offline,
+download resume). Green is YouTube-timer 05 / `YT-D29`. Record each line;
+do not write “all passing.”
+
+1. App installs on Google TV and appears in the Apps row/tab with a
+   Leanback launcher entry.
+2. First run: parent sets PIN + 15/30 (or any legal pair) at Timer setup
+   Save (`completeSetup` → `AwaitingConfirmation`); Connect and picker in
+   the wizard are **not** PIN-gated; lands on confirmation with an
+   allowlist (account **or** manual links); **no** player.
+3. Continue watching starts playback of an allowlisted **video** id
+   in-WebView (playlists expanded; `loadVideo` only) and starts the watch
+   clock.
+4. Pause, buffer, Home/background during `Playing` do not extend remaining
+   (deadline check). Home pauses WebView audio; clock still runs.
+5. At watch expiry the WebView is gone and rest UI is on screen.
+6. At rest expiry confirmation is on screen and **no** WebView exists;
+   Continue watching is required.
+7. Process kill and device reboot during `Playing` and during `Resting`
+   restore remaining (or confirmation if both elapsed); never a fresh
+   unearned window; never autoplay after rest.
+8. PIN required for duration change, reset, content, YouTube
+   connect/disconnect **from Parent settings**; wizard Connect/picker not
+   gated; Continue watching not PIN-gated.
+9. Unplayable ids skipped on definitive probe negatives; `NoPlayableItem`
+   if none; transport/401/quota keep last-known; no crash.
+10. No YouTube media files in app storage; no `vnd.youtube` launches.
+
+Offline-after-provision is **not** a criterion. Channel tune-in is **not**
+a criterion. If the iframe cannot play on the named TV after origin
+triage, stop — no download/extract/YouTube-app fallback.
+
+Hardware loops use the legal grid. The short loop is **5 min watch /
+5 min rest**. Do not invent a sub-minimum duration.
 
 ---
 
 ## 12. Stretch / Post-MVP
 
-- CRT shader (scanlines, vignette, chromatic aberration) via Media3 Effects.
-- Static-noise transition clip on channel change.
-- Per-channel daily schedules (time-of-day lineups) instead of pure loops.
-- Auto-launch on boot.
-- Storage cache eviction / size caps.
-- Simple onboarding to enter the manifest URL via on-screen keyboard.
-- More than 5 channels; channel favorites/reordering.
+- Additional parent accounts or per-child profiles.
+- Device-wide restrictions (separate product; not this process).
+- Apple TV / phone companion.
+- 24h soak of the timer (memory, WebView leaks) — recommended, not a §11
+  box.
 
 ---
 
 ## 13. Open Questions
 
-- Where will the manifest + media be hosted (own CDN, object storage, a public bucket)? Affects URL scheme and auth.
-- Is the manifest URL fixed at build time for MVP, or user-configurable from day one?
-- Do any channels need scheduling in MVP, or is pure loop acceptable for all 5?
-- Target total download size per channel (affects first-run time and storage warnings).
+Lifecycle, session start, rest anchoring, defaults, and enforcement copy
+are closed (`YT-D1`–`YT-D7`). Remaining:
+
+- Google Cloud OAuth client ID / API key for device-code + Data API
+  (Step 3). Not a product mystery.
+- Confirm D6 SKU if the default Chromecast with Google TV (4K) is not the
+  device on the desk. Name it before Step 4 hardware claims.

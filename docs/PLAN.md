@@ -1,5 +1,11 @@
 # Nostalgia Box — Delivery Plan
 
+> **Historical.** This is the original broadcast/download delivery plan. It
+> is not the delivery track. Timed YouTube TV is built from
+> [`docs/react-native/`](react-native/README.md). Product law lives in
+> [`docs/youtube-timer/`](youtube-timer/README.md). Kotlin Compose
+> implementation is not this delivery track.
+
 Work breakdown for the v1.0 MVP. Derived from [PRD.md](PRD.md) and
 [ARCHITECTURE.md](ARCHITECTURE.md); where the three disagree, the architecture
 document wins on *how* and the PRD wins on *what*.

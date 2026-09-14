@@ -1,5 +1,11 @@
 # Phase kickoff prompts
 
+> **Historical.** These briefs belong to the original broadcast/download
+> plan. They are not the delivery track. Timed YouTube TV is built from
+> [`docs/react-native/`](../react-native/README.md). Product law lives in
+> [`docs/youtube-timer/`](../youtube-timer/README.md). Kotlin Compose
+> implementation is not this delivery track.
+
 One brief per phase of [the delivery plan](../PLAN.md). Each is self-contained: copy
 everything below the rule in a file into a fresh session on this repo, and it carries
 its own context, scope boundaries, and exit criteria.

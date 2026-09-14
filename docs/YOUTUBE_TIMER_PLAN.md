@@ -8,6 +8,24 @@ The timer is enforced only inside this app. It cannot prevent viewing in the off
 YouTube app or protect against uninstalling the app, clearing its data, or changing
 the device clock.
 
+An alternative delivery track implements the same product in React Native
+(Expo TV + TypeScript core) instead of Kotlin Compose. Product decisions in
+this folder stay law; implementation locks do not. See
+[`docs/REACT_NATIVE_PLAN.md`](REACT_NATIVE_PLAN.md). Pick one track.
+
+## Step plans
+
+Implementation-grade plans (types, storage, named errors, rejected alternatives)
+live in [`docs/youtube-timer/`](youtube-timer/README.md). This file remains the
+source of the five-step list and the exit sentences; those files lock how each
+step is built.
+
+1. [Product and timer rules](youtube-timer/01-product-and-timer-rules.md)
+2. [Persistent timer and parent controls](youtube-timer/02-persistent-timer-and-parent-controls.md)
+3. [YouTube connection and curation](youtube-timer/03-youtube-connection-and-curation.md)
+4. [Controlled Android TV playback](youtube-timer/04-controlled-android-tv-playback.md)
+5. [Verify policy, API, and device](youtube-timer/05-verify-policy-api-device.md)
+
 ## 1. Redefine the product and timer rules
 
 - Replace the broadcast/download assumptions in the PRD and architecture.

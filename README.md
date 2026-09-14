@@ -1,47 +1,51 @@
-# Nostalgia Box
+# Timed YouTube TV
 
-An algorithm-free, menu-free Android TV app that recreates broadcast television:
-a channel is already playing mid-program when you turn it on, and the D-pad flips
-channels like an old antenna set. No pause, no rewind, no content menu.
+A parent-configured YouTube timer for Android TV. A parent sets a PIN, watch
+and rest durations, and an allowlist. A child watches curated YouTube inside
+this app for a bounded window, then sits on a rest screen until **Continue
+watching**.
 
-Channel content is downloaded from a hosted manifest rather than bundled in the APK.
+The timer is enforced only inside this app. It cannot prevent viewing in the
+official YouTube app or protect against uninstalling the app, clearing its
+data, or changing the device clock.
 
-## Status
+## Delivery track
 
-Phase 1 built. `:core` — the broadcast clock — is implemented and tested: manifest
-parsing and validation, the lineup timeline, wall-clock tune-in, availability
-projection, channel selection, update diffing, drift correction, and the storage-path
-and space-budget arithmetic. It is a plain Kotlin/JVM module, so `./gradlew :core:test`
-runs anywhere a JDK does — no SDK, no emulator.
+React Native (Expo TV + TypeScript `packages/core`). Do not implement the
+Kotlin Compose rewrite in parallel against the same `applicationId`.
 
-Phase 0 before it gave the app its two Gradle modules, a leanback launcher entry, and an
-empty full-screen Activity that shows black. `:app` still has no behaviour: nothing is
-wired to `:core` yet, and the data layer (P2) is the next phase.
+- [PRD](docs/PRD.md) — product requirements
+- [Architecture](docs/ARCHITECTURE.md) — Expo TV module map and `RN-D*` locks
+- [React Native plan](docs/REACT_NATIVE_PLAN.md) — five steps
+- [Step plans](docs/react-native/) — stack, timer, YouTube, player, verify
+- [Product law](docs/youtube-timer/) — `YT-D1`–`YT-D29` (Kotlin guts are not this track)
 
-- [PRD](docs/PRD.md) — product requirements (v1.0 MVP)
-- [Architecture](docs/ARCHITECTURE.md) — technical design and decisions
-- [Delivery plan](docs/PLAN.md) — phased work breakdown with exit criteria
-- [Phase prompts](docs/prompts/) — kickoff briefs for each delivery phase
+[`docs/PLAN.md`](docs/PLAN.md) and [`docs/prompts/`](docs/prompts/) are the
+retired broadcast/download plan.
+
+## Repo layout
+
+```
+packages/core    @nostalgiabox/core — Node-testable domain (no react-native)
+apps/tv          Expo app, slug timed-youtube-tv, applicationId com.nostalgiabox.tv
+```
+
+The Gradle `:core` / `:app` tree is historical on this track. Do not treat
+`./gradlew :core:test` as green.
 
 ## Building
 
 ```
-./gradlew :core:test        # plain JUnit, no Android SDK required
-./gradlew :app:assembleDebug
+pnpm test                         # packages/core Vitest + import boundary (Node only)
+pnpm --filter tv prebuild:tv      # EXPO_TV=1 expo prebuild --platform android --clean
+pnpm --filter tv android          # needs ANDROID_HOME / an Android TV emulator or device
 ```
 
-`:core` is a plain Kotlin/JVM module with the Android Gradle plugin deliberately not
-applied — that absence is a compiler-enforced boundary, not a convention, and the whole
-test strategy rests on it. It builds and tests on a machine with no Android SDK; run
-`:core:test` on its own rather than alongside a root task like `clean`, which would
-configure `:app` and pull in the SDK requirement.
+`packages/core` tests run anywhere Node 20+ does. Expo SDK 57 wants
+Node 22 (see `.nvmrc`). `apps/tv` assemble needs JDK 17 and an Android
+SDK; this host assembled a debug APK on 2026-09-14. Installing onto the
+Apps row still needs an Android TV emulator or D6.
 
-`:app` needs an Android SDK and access to Google's Maven. The container this scaffold
-was authored in has neither (`dl.google.com` is blocked by network policy — see
-[ARCHITECTURE.md §13](docs/ARCHITECTURE.md)), so the `:app` module has not been compiled
-or installed here; the version pins under `com.android.*` in
-[`gradle/libs.versions.toml`](gradle/libs.versions.toml) are unverified and should be
-confirmed against current stable before release.
-
-`tools/make-banner.py` regenerates the 320x180 TV banner and the launcher icon. It is
-pure stdlib; the build has no image-tooling dependency.
+`tools/make-banner.py` still regenerates the historical Kotlin TV banner.
+The React Native banner is `apps/tv/assets/tv-banner.png` (320×180),
+produced by `tools/make-tv-banner.py`.

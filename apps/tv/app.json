@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Timed YouTube TV",
+    "slug": "timed-youtube-tv",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "icon": "./assets/tv-icon.png",
+    "userInterfaceStyle": "dark",
+    "platforms": ["android"],
+    "splash": {
+      "backgroundColor": "#0E1016"
+    },
+    "android": {
+      "package": "com.nostalgiabox.tv",
+      "versionCode": 1,
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/tv-icon.png",
+        "backgroundColor": "#0E1016"
+      },
+      "splash": {
+        "backgroundColor": "#0E1016"
+      }
+    },
+    "plugins": [
+      "./plugins/withTimedYoutubeTv.js",
+      [
+        "@react-native-tvos/config-tv",
+        {
+          "isTV": true,
+          "androidTVRequired": true,
+          "androidTVBanner": "./assets/tv-banner.png",
+          "androidTVIcon": "./assets/tv-icon.png"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ]
+    ]
+  }
+}

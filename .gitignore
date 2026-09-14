@@ -19,3 +19,16 @@ captures/
 
 # OS
 .DS_Store
+
+# JS workspace (React Native track)
+node_modules/
+.expo/
+dist/
+coverage/
+*.tsbuildinfo
+.pnpm-debug.log
+.pnpm-store/
+apps/tv/android/
+apps/tv/ios/
+apps/tv/.expo/
+expo-env.d.ts
