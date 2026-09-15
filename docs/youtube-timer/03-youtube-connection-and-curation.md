@@ -1,6 +1,6 @@
 # Step 3 — YouTube connection and content curation
 
-**Parent:** [Timed YouTube TV — Five-Step Plan](../YOUTUBE_TIMER_PLAN.md) §3
+**Parent:** [LittlePlay — Five-Step Plan](../YOUTUBE_TIMER_PLAN.md) §3
 **Status:** blocked on Step 2 (`TimerEngine` + PIN gate). After
 `completeSetup` the phase is `AwaitingConfirmation`. First-run Connect
 YouTube and the content picker still run as the setup wizard (parent

@@ -4,12 +4,12 @@ Copy everything below the rule into a fresh session on this repo.
 
 ---
 
-Implement **Phase 5 (Overlays and settings)** of the Nostalgia Box delivery plan.
+Implement **Phase 5 (Overlays and settings)** of the LittlePlay delivery plan.
 
 **Read first:** `docs/PLAN.md` (Phase P5), `docs/ARCHITECTURE.md` (§7, §6.5),
 `docs/PRD.md` (FR7, FR11, FR12, §10.1).
 
-**Branch:** develop on `claude/nostalgia-box-overlays-<suffix>`, commit, push. No PR.
+**Branch:** develop on `claude/littleplay-overlays-<suffix>`, commit, push. No PR.
 
 **Prerequisite:** P4.
 

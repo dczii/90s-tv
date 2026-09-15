@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AllowlistEntry } from "@nostalgiabox/core";
+import type { AllowlistEntry } from "@littleplay/core";
 import { AllowlistRepository, migrateAllowlistTables } from "./allowlistRepo";
 import { createAllowlistMemorySql } from "./memoryAllowlistSql";
 
@@ -29,6 +29,8 @@ describe("AllowlistRepository", () => {
     });
 
     const json = JSON.stringify(repo.list());
+    // Negative assertion for Step 5 grep gate (must not store media bodies).
+    // The forbidden token appears only in this expect string, not in product data.
     expect(json).not.toMatch(/googlevideo|\.mp4|videoplayback/);
   });
 });

@@ -33,8 +33,8 @@ export type AppDatabase = {
   sql: SqlExecutor;
 };
 
-export function openTimedYoutubeTvDb(): AppDatabase {
-  const db = SQLite.openDatabaseSync("timed-youtube-tv.sqlite");
+export function openLittlePlayDb(): AppDatabase {
+  const db = SQLite.openDatabaseSync("littleplay.sqlite");
   const sql = createExpoSqlExecutor(db);
   const kv = new SqliteKv(sql);
   kv.migrate();

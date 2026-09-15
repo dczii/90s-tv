@@ -4,11 +4,11 @@ Copy everything below the rule into a fresh session on this repo.
 
 ---
 
-Implement **Phase 0 (Scaffold)** of the Nostalgia Box delivery plan.
+Implement **Phase 0 (Scaffold)** of the LittlePlay delivery plan.
 
 **Read first:** `docs/PLAN.md` (Phase P0), `docs/ARCHITECTURE.md` (§3, §9), `docs/PRD.md` (FR14).
 
-**Branch:** develop on `claude/nostalgia-box-scaffold-<suffix>`, commit, push. No PR.
+**Branch:** develop on `claude/littleplay-scaffold-<suffix>`, commit, push. No PR.
 
 **Requires an Android SDK.** If `dl.google.com` is unreachable in your environment, you
 cannot complete this phase — stop and say so rather than working around it. Phase 1 is

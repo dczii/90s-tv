@@ -1,4 +1,4 @@
-import type { AllowlistError } from "@nostalgiabox/core";
+import type { AllowlistError } from "@littleplay/core";
 import type { AuthErrorKind } from "./deviceCodeAuth";
 
 /** Parent-visible strings for named Step 3 failures (YT-03 / RN-03). */
@@ -13,7 +13,7 @@ export const PARENT_COPY = {
   AuthConfigMissing: "YouTube is not configured on this device.",
   AuthSecureStoreUnavailable: "Cannot store Google sign-in on this device.",
   QuotaExceeded:
-    "YouTube daily limit reached. Try again tomorrow, or use Manual link.",
+    "YouTube daily limit reached. Try again tomorrow.",
   ConfigMissing: "YouTube is not configured on this device.",
   HttpError: "YouTube could not be reached. Try again.",
   NotEmbeddable:
@@ -22,7 +22,7 @@ export const PARENT_COPY = {
   AgeRestricted: "That video is age-restricted and can't play here.",
   RegionRestricted: "That video is blocked in this region.",
   Removed: "That video is no longer available.",
-  Empty: "Add at least one video or playlist before continuing.",
+  Empty: "Select at least one playlist before continuing.",
   NoPlayableItem: "None of the allowed items can play right now.",
   MalformedUrl: "That does not look like a YouTube URL.",
   UnsupportedHost:

@@ -110,7 +110,7 @@ readonly scope, same as Kotlin.
 Unauthenticated Data API calls need a restricted Android API key plus:
 
 ```
-X-Android-Package: com.nostalgiabox.tv
+X-Android-Package: com.littleplay.tv
 X-Android-Cert: <SHA-1 hex of the signing cert>
 ```
 

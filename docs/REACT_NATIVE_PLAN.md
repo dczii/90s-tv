@@ -1,4 +1,4 @@
-# Timed YouTube TV — React Native Five-Step Plan
+# LittlePlay — React Native Five-Step Plan
 
 This is an **alternative delivery track** for the same product as
 [`YOUTUBE_TIMER_PLAN.md`](YOUTUBE_TIMER_PLAN.md): a parent-configured YouTube
@@ -55,7 +55,7 @@ This file owns the five-step list and the exit sentences.
 - Treat [`youtube-timer/01`](youtube-timer/01-product-and-timer-rules.md) as
   the product spec. Do not re-litigate phases, confirmation, ranges, or the
   enforcement paragraph.
-- Rewrite `docs/PRD.md` for Timed YouTube TV (same as Kotlin Step 1).
+- Rewrite `docs/PRD.md` for LittlePlay (same as Kotlin Step 1).
 - Write `docs/ARCHITECTURE.md` for **this** track (Expo TV + `packages/core`),
   not for `:core` / Compose.
 - Scaffold `apps/tv` from Expo's TV template and `packages/core` as a Node

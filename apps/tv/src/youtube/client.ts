@@ -351,3 +351,36 @@ export async function fetchPlaylistMetadata(
     thumbnailUrl: item.snippet ? thumbFromSnippet(item.snippet) : null,
   };
 }
+
+/** playlistItems.list — expand a playlist to video ids (YT-D21: loadVideo only). */
+export async function listPlaylistVideoIds(
+  playlistId: string,
+  auth: AuthMode,
+  apiKey: string,
+  opts: YoutubeRequestOpts = {},
+  maxPages = 5,
+): Promise<string[] | YoutubeApiError> {
+  const ids: string[] = [];
+  let pageToken: string | undefined;
+  for (let page = 0; page < maxPages; page++) {
+    const query: Record<string, string> = {
+      part: "contentDetails",
+      playlistId,
+      maxResults: "50",
+    };
+    if (pageToken) query.pageToken = pageToken;
+    const res = await youtubeFetch("playlistItems", query, auth, apiKey, opts);
+    if (!(res instanceof Response)) return res;
+    const json = (await res.json().catch(() => ({}))) as {
+      nextPageToken?: string;
+      items?: Array<{ contentDetails?: { videoId?: string } }>;
+    };
+    for (const item of json.items ?? []) {
+      const videoId = item.contentDetails?.videoId;
+      if (videoId) ids.push(videoId);
+    }
+    pageToken = json.nextPageToken;
+    if (!pageToken) break;
+  }
+  return ids;
+}

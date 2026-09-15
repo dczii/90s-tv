@@ -4,12 +4,12 @@ Copy everything below the rule into a fresh session on this repo.
 
 ---
 
-Work **Phase 7 (Stretch)** of the Nostalgia Box delivery plan.
+Work **Phase 7 (Stretch)** of the LittlePlay delivery plan.
 
 **Read first:** `docs/PLAN.md` (Phase P7), `docs/ARCHITECTURE.md` (§2.7, §6.5),
 `docs/PRD.md` (§12).
 
-**Branch:** develop on `claude/nostalgia-box-stretch-<suffix>`, commit, push. No PR.
+**Branch:** develop on `claude/littleplay-stretch-<suffix>`, commit, push. No PR.
 
 **Prerequisite: P6 passed in full.** If any PRD §11 criterion is still failing, stop and
 finish P6 instead. Nothing here is worth a regression in the shipped product.

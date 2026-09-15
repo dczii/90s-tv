@@ -46,8 +46,8 @@ kover {
         filters {
             includes {
                 classes(
-                    "com.nostalgiabox.core.TuneInResolver",
-                    "com.nostalgiabox.core.AvailabilityProjector",
+                    "com.littleplay.core.TuneInResolver",
+                    "com.littleplay.core.AvailabilityProjector",
                 )
             }
         }

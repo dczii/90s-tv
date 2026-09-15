@@ -1,4 +1,4 @@
-import type { TimeView } from "@nostalgiabox/core";
+import type { TimeView } from "@littleplay/core";
 import { nativeDeviceTime } from "device-time";
 
 /** Maps the native module into core's TimeView (RN-D12). */

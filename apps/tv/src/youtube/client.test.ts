@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { listMyPlaylists } from "./client";
 
 vi.mock("android-identity", () => ({
-  androidPackageName: () => "com.nostalgiabox.tv",
+  androidPackageName: () => "com.littleplay.tv",
   signingCertSha1Hex: () => "abc",
 }));
 

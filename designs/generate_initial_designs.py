@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 
-OUT = Path(__file__).with_name("timed-youtube-tv.pen")
+OUT = Path(__file__).with_name("littleplay.pen")
 
 BG = "#0A101C"
 PANEL = "#121C2B"
@@ -109,7 +109,7 @@ def chrome(title, section):
     return [
         rect(72, 62, 44, 44, ACCENT, 14),
         icon("timer", 80, 70, 28, BG),
-        text("TIMEBOX", 132, 67, 24, TEXT, "800"),
+        text("LittlePlay", 132, 67, 24, TEXT, "800"),
         text(section.upper(), 1570, 72, 18, MUTED, "700", width=260, align="right"),
         text(title, 92, 148, 56, TEXT, "750"),
     ]
@@ -136,14 +136,14 @@ def welcome():
         rect(0, 0, 1920, 1080, {"type": "gradient", "gradientType": "radial", "center": {"x": 0.78, "y": 0.42}, "size": {"width": 1.15, "height": 1.15}, "colors": [{"color": "#263A55", "position": 0}, {"color": BG, "position": 1}]}, 0),
         rect(72, 62, 44, 44, ACCENT, 14),
         icon("timer", 80, 70, 28, BG),
-        text("TIMEBOX", 132, 67, 24, TEXT, "800"),
+        text("LittlePlay", 132, 67, 24, TEXT, "800"),
         text("A little TV.\nThen a real break.", 108, 258, 76, TEXT, "750", width=900),
         text("Curated YouTube for your home, with clear watch and rest windows.", 112, 470, 30, MUTED, "450", width=700),
     ]
     children += button("Set up with parent PIN", 112, 624, 520, focused=True, icon_name="lock")
     children += [
         icon("info", 112, 760, 24, MUTED),
-        text("Time limits apply inside Timebox only.", 150, 759, 22, MUTED, "500"),
+        text("Time limits apply inside LittlePlay only.", 150, 759, 22, MUTED, "500"),
         rect(1240, 242, 500, 612, PANEL, 44, stroke=WHITE_10, stroke_width=1),
         rect(1292, 296, 396, 224, {"type": "gradient", "gradientType": "linear", "rotation": 135, "colors": [{"color": "#324862", "position": 0}, {"color": "#172435", "position": 1}]}, 28),
         icon("smart_display", 1450, 372, 72, TEXT),
@@ -185,7 +185,7 @@ def timer_setup():
 def connect():
     children = chrome("Connect YouTube", "Content setup")
     children += [
-        text("Use your phone to connect. Timebox requests read-only access.", 96, 224, 27, MUTED, "450"),
+        text("Use your phone to connect. LittlePlay requests read-only access.", 96, 224, 27, MUTED, "450"),
         rect(96, 314, 1120, 520, PANEL, 32, stroke=WHITE_10, stroke_width=1),
         rect(144, 366, 40, 40, ACCENT, 20),
         text("1", 144, 366, 22, BG, "750", width=40, height=40, align="center"),
@@ -245,7 +245,7 @@ def ready():
         rect(0, 0, 1920, 1080, {"type": "gradient", "gradientType": "linear", "rotation": 135, "colors": [{"color": "#30445F", "position": 0}, {"color": "#111B2A", "position": 0.52}, {"color": BG, "position": 1}]}, 0),
         rect(72, 62, 44, 44, ACCENT, 14),
         icon("timer", 80, 70, 28, BG),
-        text("TIMEBOX", 132, 67, 24, TEXT, "800"),
+        text("LittlePlay", 132, 67, 24, TEXT, "800"),
         text("Ready when you are.", 110, 282, 64, TEXT, "750"),
         text("Your timer starts only after you continue.", 112, 378, 28, MUTED, "450"),
         rect(112, 468, 572, 146, "#0D1725CC", 26, stroke=WHITE_10, stroke_width=1),

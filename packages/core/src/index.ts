@@ -61,3 +61,11 @@ export {
   noPlayableItem,
 } from "./allowlist/playability.js";
 export type { ProbeOutcome, VideoProbe } from "./allowlist/playability.js";
+export {
+  cursorFromExpanded,
+  nextPlayable,
+} from "./allowlist/nextPlayable.js";
+export type {
+  AllowlistCursor,
+  ExpandedVideoId,
+} from "./allowlist/nextPlayable.js";

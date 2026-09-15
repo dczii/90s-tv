@@ -1,6 +1,6 @@
 export type AllowlistKind = "Video" | "Playlist";
 
-export type AllowlistSource = "Account" | "ManualUrl";
+export type AllowlistSource = "Account" | "ManualUrl" | "Catalog";
 
 export type AllowlistEntry = {
   id: string;

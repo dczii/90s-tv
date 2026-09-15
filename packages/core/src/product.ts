@@ -1,5 +1,5 @@
-/** Display name. applicationId stays com.nostalgiabox.tv. */
-export const PRODUCT_NAME = "Timed YouTube TV";
+/** Display name. applicationId stays com.littleplay.tv. */
+export const PRODUCT_NAME = "LittlePlay";
 
 /** Verbatim enforcement copy (YT-D7). */
 export const ENFORCEMENT_NOTE =

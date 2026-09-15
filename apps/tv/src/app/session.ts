@@ -5,16 +5,18 @@ import {
   TimerEngine,
   emptyLockout,
   hashPin,
+  PIN_ITERATIONS,
   type AllowlistEntry,
   type TimerEvent,
   type TimerSnapshot,
-} from "@nostalgiabox/core";
-import { openTimedYoutubeTvDb, type AppDatabase } from "../data/openDb";
+} from "@littleplay/core";
+import { openLittlePlayDb, type AppDatabase } from "../data/openDb";
 import { loadStore, savePin, saveTimer } from "../data/timerStore";
 import type { AllowlistRepository } from "../data/allowlistRepo";
 import type { SqliteKv } from "../data/sqliteKv";
 import { addActivityResumeListener, deviceTime } from "../time/deviceTime";
 import { hasStoredTokens } from "../secure/tokenStore";
+import { randomPinSalt } from "../crypto/pinSalt";
 
 export type WizardStep =
   | "welcome"
@@ -41,7 +43,7 @@ function shouldPersistCommand(_event: TimerEvent): boolean {
 }
 
 export function createSession(): AppSession {
-  const db: AppDatabase = openTimedYoutubeTvDb();
+  const db: AppDatabase = openLittlePlayDb();
   const loaded = loadStore(db.kv);
   const engine = new TimerEngine(loaded.timer);
   const pinGate = loaded.pin
@@ -69,6 +71,7 @@ export type SessionApi = {
   allowlistEntries: AllowlistEntry[];
   allowlistRepo: AllowlistRepository | null;
   signedIn: boolean;
+  kv: SqliteKv | null;
   tickNow: () => void;
   completeSetup: (
     watchMin: number,
@@ -190,9 +193,10 @@ export function useAppSession(): SessionApi {
       if (!session) return "Not ready";
       setPinPending(true);
       try {
-        const salt = new Uint8Array(16);
-        crypto.getRandomValues(salt);
-        const record = await hashPin(pin, salt);
+        const salt = await randomPinSalt();
+        // Full 120k rounds is very slow in Hermes on TV hardware; keep prod strength, speed dev.
+        const iterations = __DEV__ ? 4_000 : PIN_ITERATIONS;
+        const record = await hashPin(pin, salt, iterations);
         const now = deviceTime();
         const result = session.engine.completeSetup(
           {
@@ -307,6 +311,7 @@ export function useAppSession(): SessionApi {
     allowlistEntries,
     allowlistRepo,
     signedIn,
+    kv: sessionRef.current?.kv ?? null,
     tickNow,
     completeSetup,
     confirmWatching,

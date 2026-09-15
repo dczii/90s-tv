@@ -4,12 +4,12 @@ Copy everything below the rule into a fresh session on this repo.
 
 ---
 
-Implement **Phase 4 (Player)** of the Nostalgia Box delivery plan.
+Implement **Phase 4 (Player)** of the LittlePlay delivery plan.
 
 **Read first:** `docs/PLAN.md` (Phase P4), `docs/ARCHITECTURE.md` (**§1 in full**, §6.1–§6.6,
 §2.6), `docs/PRD.md` (FR1–FR9).
 
-**Branch:** develop on `claude/nostalgia-box-player-<suffix>`, commit, push. No PR.
+**Branch:** develop on `claude/littleplay-player-<suffix>`, commit, push. No PR.
 
 **Prerequisites:** P1, P3 (or hand-sideloaded files to unblock early), and **D6 — a
 named target device.** The switch-latency requirement is unverifiable without one.

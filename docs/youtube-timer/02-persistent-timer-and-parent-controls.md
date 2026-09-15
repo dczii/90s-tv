@@ -1,6 +1,6 @@
 # Step 2 — Persistent timer and parent controls
 
-**Parent:** [Timed YouTube TV — Five-Step Plan](../YOUTUBE_TIMER_PLAN.md) §2
+**Parent:** [LittlePlay — Five-Step Plan](../YOUTUBE_TIMER_PLAN.md) §2
 **Status:** blocked on Step 1’s rewritten PRD/architecture (the rules this
 engine encodes).
 **Produces:** `:core` timer + PIN API with JUnit tests; `:app` DataStore
@@ -49,7 +49,7 @@ Copied from the parent plan and sharpened:
 - [01-product-and-timer-rules.md](01-product-and-timer-rules.md) (`YT-D1`–`YT-D7`)
 - [YOUTUBE_TIMER_PLAN.md](../YOUTUBE_TIMER_PLAN.md) §2
 - [ARCHITECTURE.md](../ARCHITECTURE.md) §3 and §13 (module split, env)
-- `core/src/test/kotlin/com/nostalgiabox/core/ModuleBoundaryTest.kt`
+- `core/src/test/kotlin/com/littleplay/core/ModuleBoundaryTest.kt`
 - `core/build.gradle.kts` (Kover filter you will retarget)
 - [DESIGN_BRIEF.md](../../designs/DESIGN_BRIEF.md) — Welcome, Timer setup,
   Parent settings, PIN cells, duration steppers
@@ -428,7 +428,7 @@ Do not add Media3 or WorkManager.
 |---|---|
 | All broadcast types listed in [README](README.md) | Delete sources and tests |
 | `FakeClock` | Replace with a mutable `TimeView` test double |
-| Kover class filter | `com.nostalgiabox.core.timer.TimerEngine` |
+| Kover class filter | `com.littleplay.core.timer.TimerEngine` |
 | ARCHITECTURE §4 domain / §5.2 Room files / §6 ExoPlayer | Already rewritten in Step 1; this step matches that text in code |
 | `BroadcastClock` using `System.currentTimeMillis` in `:core` | Delete; wall clock is a `TimeView` field supplied by `:app` |
 

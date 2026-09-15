@@ -4,12 +4,12 @@ Copy everything below the rule into a fresh session on this repo.
 
 ---
 
-Work **Phase 6 (Hardening and acceptance)** of the Nostalgia Box delivery plan.
+Work **Phase 6 (Hardening and acceptance)** of the LittlePlay delivery plan.
 
 **Read first:** `docs/PLAN.md` (Phase P6), `docs/ARCHITECTURE.md` (§6.5, §12),
 `docs/PRD.md` (**§11 in full** — this phase is that checklist).
 
-**Branch:** develop on `claude/nostalgia-box-hardening-<suffix>`, commit, push. No PR.
+**Branch:** develop on `claude/littleplay-hardening-<suffix>`, commit, push. No PR.
 
 **Prerequisite:** P5. Requires the D6 device and the C3 host.
 

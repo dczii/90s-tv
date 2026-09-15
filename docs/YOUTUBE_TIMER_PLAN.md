@@ -1,4 +1,4 @@
-# Timed YouTube TV — Five-Step Plan
+# LittlePlay — Five-Step Plan
 
 This plan replaces the original downloaded-media direction with a curated YouTube
 player for Android TV. A parent connects an account or enters public YouTube links,

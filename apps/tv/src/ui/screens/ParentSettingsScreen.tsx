@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { ENFORCEMENT_NOTE, type TimerSnapshot } from "@nostalgiabox/core";
+import { ENFORCEMENT_NOTE, type TimerSnapshot } from "@littleplay/core";
 import { DurationStepper } from "../components/DurationStepper";
 import { PinCells } from "../components/PinCells";
 import { TvButton } from "../components/TvButton";
@@ -44,13 +44,17 @@ export function ParentSettingsScreen({
   if (!unlocked) {
     return (
       <View style={styles.shell} accessibilityLabel="Parent PIN gate">
-        <Text style={styles.title}>Enter parent PIN</Text>
-        <PinCells
-          disabled={pinPending}
-          onComplete={(pin) => {
-            void onVerify(pin).then((err) => setError(err));
-          }}
-        />
+        <Text style={styles.titleCompact}>Enter parent PIN</Text>
+        <View style={styles.pinRegion}>
+          <PinCells
+            disabled={pinPending}
+            dense
+            preferKeypadFocus
+            onComplete={(pin) => {
+              void onVerify(pin).then((err) => setError(err));
+            }}
+          />
+        </View>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <TvButton label="Back" variant="secondary" onPress={onClose} />
       </View>
@@ -67,26 +71,30 @@ export function ParentSettingsScreen({
         {signedIn ? "YouTube connected" : "YouTube not connected"} ·{" "}
         {allowlistCount} allowed
       </Text>
-      <DurationStepper
-        label="Watch"
-        valueMinutes={watchMin}
-        min={5}
-        max={60}
-        onChange={(v) => {
-          setWatchMin(v);
-          setError(onChangePolicy(v, restMin));
-        }}
-      />
-      <DurationStepper
-        label="Rest"
-        valueMinutes={restMin}
-        min={5}
-        max={180}
-        onChange={(v) => {
-          setRestMin(v);
-          setError(onChangePolicy(watchMin, v));
-        }}
-      />
+      <View style={styles.steppers}>
+        <DurationStepper
+          label="Watch"
+          valueMinutes={watchMin}
+          min={5}
+          max={60}
+          dense
+          onChange={(v) => {
+            setWatchMin(v);
+            setError(onChangePolicy(v, restMin));
+          }}
+        />
+        <DurationStepper
+          label="Rest"
+          valueMinutes={restMin}
+          min={5}
+          max={180}
+          dense
+          onChange={(v) => {
+            setRestMin(v);
+            setError(onChangePolicy(watchMin, v));
+          }}
+        />
+      </View>
       <TvButton
         label={signedIn ? "YouTube account" : "Connect YouTube"}
         variant="secondary"
@@ -115,16 +123,31 @@ const styles = StyleSheet.create({
     backgroundColor: colors.navy,
     paddingHorizontal: safe.horizontal,
     paddingVertical: safe.vertical,
-    justifyContent: "center",
-    gap: 16,
+    gap: 10,
   },
-  title: { color: colors.offWhite, fontSize: 42, fontWeight: "700" },
-  body: { color: colors.offWhite, fontSize: 26 },
+  title: { color: colors.offWhite, fontSize: 28, fontWeight: "700", flexShrink: 0 },
+  titleCompact: {
+    color: colors.offWhite,
+    fontSize: 28,
+    fontWeight: "700",
+    flexShrink: 0,
+  },
+  steppers: {
+    flexDirection: "row",
+    gap: 32,
+    flexShrink: 0,
+  },
+  pinRegion: {
+    flex: 1,
+    minHeight: 0,
+    width: "100%",
+  },
+  body: { color: colors.offWhite, fontSize: 18, flexShrink: 0 },
   note: {
     color: colors.slateMuted,
-    fontSize: 18,
-    maxWidth: 1100,
-    lineHeight: 26,
+    fontSize: 14,
+    flexShrink: 1,
+    lineHeight: 20,
   },
-  error: { color: colors.amber, fontSize: 22 },
+  error: { color: colors.amber, fontSize: 16, flexShrink: 0 },
 });

@@ -1,8 +1,8 @@
 # Step 4 — Controlled Android TV playback
 
 **Parent:** [React Native Five-Step Plan](../REACT_NATIVE_PLAN.md) §4
-**Status:** unblocked. Steps 2–3 timer, PIN, allowlist, and OAuth are on
-disk.
+**Status:** implemented on disk (native view + PlayerSession + continue
+pipeline). Step 5 greps/hardware still confirm green on D6.
 **Produces:** Expo native `YoutubePlayerView` (WebViewAssetLoader + IFrame),
 destroy-on-expiry, eight design-brief screens, D-pad behavior. No
 `react-native-webview`, no ExoPlayer, no `expo-av` / `expo-video` YouTube

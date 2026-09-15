@@ -1,4 +1,4 @@
-// Nostalgia Box — Phase 0 scaffold.
+// LittlePlay — Phase 0 scaffold.
 //
 // The `google()` repositories below are content-filtered on purpose. `:core` is a plain
 // Kotlin/JVM module (ARCHITECTURE.md §3) and none of its dependencies live on Google's
@@ -36,7 +36,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "nostalgia-box"
+rootProject.name = "littleplay"
 
 include(":core")
 include(":app")

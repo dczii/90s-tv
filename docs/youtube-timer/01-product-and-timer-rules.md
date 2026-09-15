@@ -1,6 +1,6 @@
 # Step 1 — Product and timer rules
 
-**Parent:** [Timed YouTube TV — Five-Step Plan](../YOUTUBE_TIMER_PLAN.md) §1
+**Parent:** [LittlePlay — Five-Step Plan](../YOUTUBE_TIMER_PLAN.md) §1
 **Status:** product text landed via the React Native track’s Step 1
 (`docs/PRD.md` rewritten; `docs/ARCHITECTURE.md` is Expo + `packages/core`,
 not `:core` / Compose). This file remains product law. Do not implement
@@ -27,7 +27,7 @@ retired, not adapted.
 
 Copied from the parent plan and sharpened:
 
-- [ ] `docs/PRD.md` describes Timed YouTube TV (parent + child on Android TV),
+- [ ] `docs/PRD.md` describes LittlePlay (parent + child on Android TV),
       not a technical operator hosting a manifest. Old FR1–FR15 and §11 are
       gone; new numbered FRs and a new §11 exist.
 - [ ] `docs/ARCHITECTURE.md` §1 states the new hanging idea (monotonic watch
@@ -52,7 +52,7 @@ from the new architecture plus [02](02-persistent-timer-and-parent-controls.md).
 - [ARCHITECTURE.md](../ARCHITECTURE.md) (the document being replaced)
 - [DESIGN_BRIEF.md](../../designs/DESIGN_BRIEF.md)
 - [PLAN.md](../PLAN.md) and [prompts/README.md](../prompts/README.md) (tone only)
-- `:core` types in `core/src/main/kotlin/com/nostalgiabox/core/model/Domain.kt`
+- `:core` types in `core/src/main/kotlin/com/littleplay/core/model/Domain.kt`
   (the delete list)
 
 Do not read `designs/*.pen`. Do not implement timer code in this step.
@@ -247,7 +247,7 @@ Rest expiry → `AwaitingConfirmation` → still no player.
 - `:core` stays JVM-only. `ModuleBoundaryTest` remains law.
 - Replace domain types rather than stretching `Lineup` / `Slot` into a timer
   (see [README.md](README.md) “Replaced in `:core`”).
-- Display name Timed YouTube TV; keep `applicationId` `com.nostalgiabox.tv`.
+- Display name LittlePlay; keep `applicationId` `com.littleplay.tv`.
 
 ---
 

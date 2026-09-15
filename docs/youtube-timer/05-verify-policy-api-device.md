@@ -1,9 +1,9 @@
 # Step 5 — Verify policy, API, and device
 
-**Parent:** [Timed YouTube TV — Five-Step Plan](../YOUTUBE_TIMER_PLAN.md) §5
+**Parent:** [LittlePlay — Five-Step Plan](../YOUTUBE_TIMER_PLAN.md) §5
 **Status:** blocked on Steps 1–4. Adds no product surface.
 **Produces:** a recorded checklist (automated + D6 hardware) that
-defines **green** for Timed YouTube TV. A platform-blocker note if the
+defines **green** for LittlePlay. A platform-blocker note if the
 iframe cannot play on the named TV — and a halt, not a fallback.
 
 ---

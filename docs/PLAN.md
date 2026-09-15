@@ -1,7 +1,7 @@
-# Nostalgia Box — Delivery Plan
+# LittlePlay — Delivery Plan
 
 > **Historical.** This is the original broadcast/download delivery plan. It
-> is not the delivery track. Timed YouTube TV is built from
+> is not the delivery track. LittlePlay is built from
 > [`docs/react-native/`](react-native/README.md). Product law lives in
 > [`docs/youtube-timer/`](youtube-timer/README.md). Kotlin Compose
 > implementation is not this delivery track.

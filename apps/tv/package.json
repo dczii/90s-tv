@@ -11,13 +11,28 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "expo": {
+    "autolinking": {
+      "android": {
+        "buildFromSource": [
+          "expo-secure-store",
+          "expo-sqlite",
+          "expo-constants",
+          "expo-splash-screen",
+          "expo"
+        ]
+      }
+    }
+  },
   "dependencies": {
-    "@nostalgiabox/core": "workspace:*",
+    "@littleplay/core": "workspace:*",
     "android-identity": "file:./modules/android-identity",
+    "buffer": "^6.0.3",
     "device-time": "file:./modules/device-time",
     "expo": "~57.0.13",
     "expo-build-properties": "~1.0.10",
     "expo-constants": "~57.0.18",
+    "expo-crypto": "~57.0.3",
     "expo-secure-store": "~15.0.8",
     "expo-splash-screen": "~57.0.6",
     "expo-sqlite": "~57.0.3",
@@ -25,7 +40,8 @@
     "react": "19.2.3",
     "react-native": "npm:react-native-tvos@0.86-stable",
     "react-native-qrcode-svg": "^6.3.15",
-    "react-native-svg": "15.12.1"
+    "react-native-svg": "15.12.1",
+    "youtube-player": "file:./modules/youtube-player"
   },
   "devDependencies": {
     "@react-native-tvos/config-tv": "^0.1.6",

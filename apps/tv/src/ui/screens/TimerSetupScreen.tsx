@@ -14,57 +14,53 @@ export function TimerSetupScreen({ pinPending, onSave }: Props) {
   const [watchMin, setWatchMin] = useState(15);
   const [restMin, setRestMin] = useState(30);
   const [pin, setPin] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"create" | "confirm">("create");
 
-  async function save() {
-    if (!pin || pin !== confirm) {
-      setError("PINs do not match");
-      return;
-    }
-    const err = await onSave(watchMin, restMin, pin);
+  async function persistPin(pinValue: string) {
+    const err = await onSave(watchMin, restMin, pinValue);
     if (err) setError(err);
   }
 
   return (
     <View style={styles.shell} accessibilityLabel="Timer setup">
       <Text style={styles.title}>Timer setup</Text>
-      <DurationStepper
-        label="Watch"
-        valueMinutes={watchMin}
-        min={5}
-        max={60}
-        onChange={setWatchMin}
-      />
-      <DurationStepper
-        label="Rest"
-        valueMinutes={restMin}
-        min={5}
-        max={180}
-        onChange={setRestMin}
-      />
-      <Text style={styles.sub}>
-        {mode === "create" ? "Create parent PIN" : "Confirm parent PIN"}
-      </Text>
-      <PinCells
-        disabled={pinPending}
-        onComplete={(value) => {
-          setError(null);
-          if (mode === "create") {
+      <View style={styles.steppers}>
+        <DurationStepper
+          label="Watch"
+          valueMinutes={watchMin}
+          min={5}
+          max={60}
+          dense
+          onChange={setWatchMin}
+        />
+        <DurationStepper
+          label="Rest"
+          valueMinutes={restMin}
+          min={5}
+          max={180}
+          dense
+          onChange={setRestMin}
+        />
+      </View>
+      <Text style={styles.sub}>Parent PIN</Text>
+      <View style={styles.pinRegion}>
+        <PinCells
+          disabled={pinPending}
+          dense
+          preferKeypadFocus
+          onComplete={(value) => {
+            setError(null);
             setPin(value);
-            setMode("confirm");
-          } else {
-            setConfirm(value);
-          }
-        }}
-      />
+            void persistPin(value);
+          }}
+        />
+      </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <TvButton
         label={pinPending ? "Saving…" : "Save and continue"}
-        disabled={pinPending || !pin || !confirm}
+        disabled={pinPending || !pin}
         onPress={() => {
-          void save();
+          if (pin) void persistPin(pin);
         }}
       />
     </View>
@@ -77,10 +73,33 @@ const styles = StyleSheet.create({
     backgroundColor: colors.navy,
     paddingHorizontal: safe.horizontal,
     paddingVertical: safe.vertical,
-    justifyContent: "center",
-    gap: 16,
+    gap: 10,
   },
-  title: { color: colors.offWhite, fontSize: 42, fontWeight: "700" },
-  sub: { color: colors.offWhite, fontSize: 26, marginTop: 12 },
-  error: { color: colors.amber, fontSize: 24 },
+  title: {
+    color: colors.offWhite,
+    fontSize: 28,
+    fontWeight: "700",
+    flexShrink: 0,
+  },
+  steppers: {
+    flexDirection: "row",
+    gap: 32,
+    flexShrink: 0,
+    alignItems: "stretch",
+  },
+  sub: {
+    color: colors.offWhite,
+    fontSize: 18,
+    flexShrink: 0,
+  },
+  pinRegion: {
+    flex: 1,
+    minHeight: 0,
+    width: "100%",
+  },
+  error: {
+    color: colors.amber,
+    fontSize: 16,
+    flexShrink: 0,
+  },
 });

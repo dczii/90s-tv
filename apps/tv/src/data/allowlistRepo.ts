@@ -1,4 +1,4 @@
-import type { AllowlistEntry, AllowlistKind, AllowlistSource } from "@nostalgiabox/core";
+import type { AllowlistEntry, AllowlistKind, AllowlistSource } from "@littleplay/core";
 import type { SqlExecutor } from "./sqliteKv";
 
 export function migrateAllowlistTables(db: SqlExecutor): void {

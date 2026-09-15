@@ -1,4 +1,4 @@
-# Timed YouTube TV — step plans
+# LittlePlay — step plans
 
 > **This Kotlin implementation is not the delivery track.** Product
 > decisions (`YT-D*`) in these files remain law. `:core` / Compose /
@@ -40,7 +40,7 @@ are not the product.
 **Retained** (still law):
 
 - Two Gradle modules. `:core` is a plain Kotlin/JVM module. No `android.*` /
-  `androidx.*`. [`ModuleBoundaryTest`](../../core/src/test/kotlin/com/nostalgiabox/core/ModuleBoundaryTest.kt)
+  `androidx.*`. [`ModuleBoundaryTest`](../../core/src/test/kotlin/com/littleplay/core/ModuleBoundaryTest.kt)
   stays.
 - This environment can run `./gradlew :core:test`. `:app` needs an Android SDK
   elsewhere. Step 5 must not pretend otherwise.
@@ -88,8 +88,8 @@ at probe/play; the IFrame bridge is `loadVideo` only. See Step 1.
         ui/      Compose TV screens from the design brief
 ```
 
-Keep `applicationId` `com.nostalgiabox.tv` and the `com.nostalgiabox.*`
-packages. The display name is Timed YouTube TV. Renaming the id is out of
+Keep `applicationId` `com.littleplay.tv` and the `com.littleplay.*`
+packages. The display name is LittlePlay. Renaming the id is out of
 scope (it would fork any already-installed scaffold APK).
 
 ## How to use a step file

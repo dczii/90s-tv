@@ -1,4 +1,4 @@
-# Timed YouTube TV — React Native step plans
+# LittlePlay — React Native step plans
 
 Implementation-grade plans for the five steps in
 [`docs/REACT_NATIVE_PLAN.md`](../REACT_NATIVE_PLAN.md). The parent file is the
@@ -19,7 +19,7 @@ abandoned Kotlin rewrite.
 
 ## Pick one track
 
-`applicationId` stays `com.nostalgiabox.tv`. Shipping both APKs is a fork.
+`applicationId` stays `com.littleplay.tv`. Shipping both APKs is a fork.
 If this track is chosen, stop implementing Kotlin Steps 2–5. Kotlin Step 1’s
 *product* rewrite of the PRD is still required; its *architecture* rewrite is
 replaced by [01](01-stack-and-module-map.md).
@@ -68,7 +68,7 @@ apps/tv                Expo (CNG) + react-native-tvos
                        src/ui/                    phase-driven screens (no stack router)
 ```
 
-Keep `applicationId` `com.nostalgiabox.tv`. Display name Timed YouTube TV.
+Keep `applicationId` `com.littleplay.tv`. Display name LittlePlay.
 
 ## Kotlin → RN mapping
 

@@ -5,10 +5,19 @@ import { colors } from "../../theme/tokens";
 type Props = {
   length?: number;
   disabled?: boolean;
+  dense?: boolean;
+  /** Move TV focus to digit 1 when the pad mounts. */
+  preferKeypadFocus?: boolean;
   onComplete: (pin: string) => void;
 };
 
-export function PinCells({ length = 4, disabled, onComplete }: Props) {
+export function PinCells({
+  length = 4,
+  disabled,
+  dense,
+  preferKeypadFocus,
+  onComplete,
+}: Props) {
   const [digits, setDigits] = useState<string[]>([]);
   const display = useMemo(() => {
     const cells = Array.from({ length }, (_, i) => digits[i] ?? "");
@@ -30,42 +39,50 @@ export function PinCells({ length = 4, disabled, onComplete }: Props) {
     setDigits((prev) => prev.slice(0, -1));
   }
 
+  const cellStyle = dense ? styles.cellDense : styles.cell;
+  const keyStyle = dense ? styles.keyDense : styles.key;
+  const cellTextStyle = dense ? styles.cellTextDense : styles.cellText;
+  const keyTextStyle = dense ? styles.keyTextDense : styles.keyText;
+
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, dense && styles.wrapDense]}>
       <View style={styles.cells}>
         {display.map((d, i) => (
-          <View key={i} style={styles.cell}>
-            <Text style={styles.cellText}>{d ? "•" : ""}</Text>
+          <View key={i} style={cellStyle}>
+            <Text style={cellTextStyle}>{d ? "•" : ""}</Text>
           </View>
         ))}
       </View>
-      <View style={styles.pad}>
+      <View style={[styles.pad, dense && styles.padDense]}>
         {"123456789".split("").map((d) => (
           <Pressable
             key={d}
             disabled={disabled}
             onPress={() => append(d)}
-            style={({ focused }) => [styles.key, focused && styles.focused]}
+            {...(preferKeypadFocus && d === "1"
+              ? ({ hasTVPreferredFocus: true } as object)
+              : {})}
+            style={({ focused }) => [keyStyle, focused && styles.focused]}
             accessibilityLabel={`Digit ${d}`}
           >
-            <Text style={styles.keyText}>{d}</Text>
+            <Text style={keyTextStyle}>{d}</Text>
           </Pressable>
         ))}
         <Pressable
           disabled={disabled}
           onPress={backspace}
-          style={({ focused }) => [styles.key, focused && styles.focused]}
+          style={({ focused }) => [keyStyle, focused && styles.focused]}
           accessibilityLabel="Backspace"
         >
-          <Text style={styles.keyText}>⌫</Text>
+          <Text style={keyTextStyle}>⌫</Text>
         </Pressable>
         <Pressable
           disabled={disabled}
           onPress={() => append("0")}
-          style={({ focused }) => [styles.key, focused && styles.focused]}
+          style={({ focused }) => [keyStyle, focused && styles.focused]}
           accessibilityLabel="Digit 0"
         >
-          <Text style={styles.keyText}>0</Text>
+          <Text style={keyTextStyle}>0</Text>
         </Pressable>
       </View>
     </View>
@@ -73,27 +90,55 @@ export function PinCells({ length = 4, disabled, onComplete }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", gap: 24 },
-  cells: { flexDirection: "row", gap: 16 },
+  wrap: {
+    alignItems: "center",
+    gap: 24,
+  },
+  wrapDense: {
+    flex: 1,
+    gap: 8,
+    justifyContent: "space-evenly",
+  },
+  cells: {
+    flexDirection: "row",
+    gap: 16,
+    alignSelf: "stretch",
+    flexShrink: 0,
+  },
   cell: {
-    width: 64,
-    height: 80,
+    flex: 1,
+    aspectRatio: 0.85,
     borderRadius: 10,
     backgroundColor: colors.slate,
     alignItems: "center",
     justifyContent: "center",
   },
+  cellDense: {
+    flex: 1,
+    aspectRatio: 1.2,
+    borderRadius: 8,
+    backgroundColor: colors.slate,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   cellText: { color: colors.offWhite, fontSize: 36 },
+  cellTextDense: { color: colors.offWhite, fontSize: 22 },
   pad: {
-    width: 360,
+    alignSelf: "stretch",
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
     justifyContent: "center",
   },
+  padDense: {
+    flex: 1,
+    gap: 8,
+    alignContent: "center",
+  },
   key: {
-    width: 96,
-    height: 64,
+    flexBasis: "30%",
+    flexGrow: 1,
+    aspectRatio: 1.45,
     borderRadius: 10,
     backgroundColor: colors.slate,
     alignItems: "center",
@@ -101,6 +146,18 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "transparent",
   },
+  keyDense: {
+    flexBasis: "30%",
+    flexGrow: 1,
+    aspectRatio: 1.55,
+    borderRadius: 8,
+    backgroundColor: colors.slate,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
   focused: { borderColor: colors.offWhite },
   keyText: { color: colors.offWhite, fontSize: 28, fontWeight: "600" },
+  keyTextDense: { color: colors.offWhite, fontSize: 20, fontWeight: "600" },
 });

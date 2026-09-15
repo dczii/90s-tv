@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Timed YouTube TV",
-    "slug": "timed-youtube-tv",
+    "name": "LittlePlay",
+    "slug": "littleplay",
     "version": "1.0.0",
     "orientation": "landscape",
     "icon": "./assets/tv-icon.png",
@@ -11,7 +11,7 @@
       "backgroundColor": "#0E1016"
     },
     "android": {
-      "package": "com.nostalgiabox.tv",
+      "package": "com.littleplay.tv",
       "versionCode": 1,
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -28,7 +28,7 @@
       }
     },
     "plugins": [
-      "./plugins/withTimedYoutubeTv.js",
+      "./plugins/withLittlePlay.js",
       [
         "@react-native-tvos/config-tv",
         {

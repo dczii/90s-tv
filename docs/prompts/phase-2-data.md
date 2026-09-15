@@ -4,12 +4,12 @@ Copy everything below the rule into a fresh session on this repo.
 
 ---
 
-Implement **Phase 2 (Data layer)** of the Nostalgia Box delivery plan.
+Implement **Phase 2 (Data layer)** of the LittlePlay delivery plan.
 
 **Read first:** `docs/PLAN.md` (Phase P2), `docs/ARCHITECTURE.md` (§5.1, §5.2, §5.3, §9),
 `docs/PRD.md` (FR10, FR12, §5).
 
-**Branch:** develop on `claude/nostalgia-box-data-<suffix>`, commit, push. No PR.
+**Branch:** develop on `claude/littleplay-data-<suffix>`, commit, push. No PR.
 
 **Prerequisite:** P1 (`:core` validator and DTOs). A local range-capable host is enough
 to work against; C3 is not required until P3.

@@ -1,12 +1,12 @@
 # Step 2 — Persistent timer and parent controls
 
 **Parent:** [React Native Five-Step Plan](../REACT_NATIVE_PLAN.md) §2
-**Status:** done. `@nostalgiabox/core` ships `TimerEngine` + `PinGate` with
+**Status:** done. `@littleplay/core` ships `TimerEngine` + `PinGate` with
 Vitest (100% branch/line on `timerEngine.ts`). `apps/tv` supplies
 `device-time`, `expo-sqlite` kv, and D-pad Welcome / Timer setup / PIN /
 Parent settings / phase shell. `pnpm test` is green on Node.
 **Blocked on:** nothing for Step 3.
-**Produces:** `@nostalgiabox/core` timer + PIN API with Vitest; `device-time`
+**Produces:** `@littleplay/core` timer + PIN API with Vitest; `device-time`
 native module; `expo-sqlite` adapter; PIN UI wired to Welcome / Timer setup /
 Parent settings (screens can be ugly; Step 4 owns visual pass).
 
@@ -168,7 +168,7 @@ Do not invent a third clock.
 
 ### Persistence — `expo-sqlite`, not AsyncStorage
 
-TV-supported. One DB `timed-youtube-tv.sqlite`.
+TV-supported. One DB `littleplay.sqlite`.
 
 ```
 kv(key TEXT PRIMARY KEY, value TEXT NOT NULL)

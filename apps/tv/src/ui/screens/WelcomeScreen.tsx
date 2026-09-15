@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { ENFORCEMENT_NOTE, PRODUCT_NAME } from "@nostalgiabox/core";
+import { ENFORCEMENT_NOTE, PRODUCT_NAME } from "@littleplay/core";
 import { TvButton } from "../components/TvButton";
 import { colors, safe } from "../../theme/tokens";
 
@@ -13,7 +13,11 @@ export function WelcomeScreen({ onStart }: Props) {
         A parent sets a PIN, watch and rest times, and which YouTube videos are
         allowed. Watching only starts when someone presses Continue watching.
       </Text>
-      <TvButton label="Set up with parent PIN" onPress={onStart} />
+      <TvButton
+        label="Set up with parent PIN"
+        onPress={onStart}
+        {...({ hasTVPreferredFocus: true } as object)}
+      />
       <Text style={styles.note}>{ENFORCEMENT_NOTE}</Text>
     </View>
   );

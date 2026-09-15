@@ -4,12 +4,12 @@ Copy everything below the rule into a fresh session on this repo.
 
 ---
 
-Implement **Phase 3 (Download engine)** of the Nostalgia Box delivery plan.
+Implement **Phase 3 (Download engine)** of the LittlePlay delivery plan.
 
 **Read first:** `docs/PLAN.md` (Phase P3), `docs/ARCHITECTURE.md` (§5.3, §5.4, §5.5, §2.4),
 `docs/PRD.md` (FR10, FR11, FR13, §5.2).
 
-**Branch:** develop on `claude/nostalgia-box-downloads-<suffix>`, commit, push. No PR.
+**Branch:** develop on `claude/littleplay-downloads-<suffix>`, commit, push. No PR.
 
 **Prerequisites:** P2, and **C3 — a real host with verified Range support.** This is
 where the two tracks meet. Do not start against a host you have not verified returns `206`.

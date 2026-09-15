@@ -1,7 +1,7 @@
-# Timed YouTube TV — Architecture (React Native track)
+# LittlePlay — Architecture (React Native track)
 
 Companion to the PRD (v1.0 MVP). This document decides **how** this repo
-builds Timed YouTube TV: Expo TV + a Node-testable TypeScript domain
+builds LittlePlay: Expo TV + a Node-testable TypeScript domain
 package. Product law (`YT-D1`–`YT-D29`) lives in
 [`youtube-timer/`](youtube-timer/README.md) and is not restated here except
 by reference. Stack and native-seam locks (`RN-D1`–`RN-D19`) live here and
@@ -13,7 +13,7 @@ disagree on *how it is built*, this file and `docs/react-native/` win.
 Pick **one** delivery track. Kotlin Compose (`:core` / `:app`, DataStore,
 Hilt) is the other track. It stays on disk as product reference and as an
 abandoned rewrite. Do not compile it on this track. Do not implement both
-against `com.nostalgiabox.tv`.
+against `com.littleplay.tv`.
 
 ---
 
@@ -75,14 +75,14 @@ retired, not adapted.
 ## 3. Module map
 
 ```
-packages/core          @nostalgiabox/core — TypeScript, Node-testable
+packages/core          @littleplay/core — TypeScript, Node-testable
                        no react, no react-native, no expo
                        timer/   TimeView · TimerPolicy · TimerEngine
                        pin/     PinHasher · PinGate   (@noble/hashes PBKDF2-SHA256)
                        allowlist/  AllowlistEntry · YoutubeUrlParser · nextPlayable
 
 apps/tv                Expo (CNG) + react-native-tvos
-                       plugins/withTimedYoutubeTv.js
+                       plugins/withLittlePlay.js
                        modules/device-time        Step 2 — elapsedRealtime + wall + BOOT_COUNT
                        modules/android-identity   Step 3 — package name + signing cert SHA-1
                        modules/youtube-player     Step 4 — WebViewAssetLoader + IFrame host
@@ -94,7 +94,7 @@ apps/tv                Expo (CNG) + react-native-tvos
                        src/ui/                    phase-driven screens (no stack router)
 ```
 
-Keep `applicationId` `com.nostalgiabox.tv`. Display name Timed YouTube TV.
+Keep `applicationId` `com.littleplay.tv`. Display name LittlePlay.
 Renaming the id is out of scope.
 
 **Why split at all, for an app this size?** Same three reasons as the
@@ -115,7 +115,7 @@ count against the native budget (§5).
 
 The Gradle tree (`:core`, `:app`, `settings.gradle.kts`) is historical on
 this track (`RN-D6`). `./gradlew :core:test` is **not** a green criterion
-here. Default `pnpm test` runs `@nostalgiabox/core`.
+here. Default `pnpm test` runs `@littleplay/core`.
 
 ---
 
@@ -218,7 +218,7 @@ Do not rewrite them here. `YT-D8`–`YT-D29` remain law for later steps.
 | **RN-D1** | Stack | Expo CNG + `react-native-tvos` matching the pinned Expo SDK + `@react-native-tvos/config-tv` with `isTV: true` and `androidTVRequired: true`. No Expo Go. No phone. No Apple TV in v1. New Architecture on (Fabric + Hermes). |
 | **RN-D2** | Domain package | `packages/core` TypeScript. No `react` / `react-native` / `expo*`. Vitest on Node. |
 | **RN-D3** | Native budget | Only `device-time`, `android-identity`, `youtube-player`. Fourth module = architecture change. |
-| **RN-D4** | Identity | `applicationId` `com.nostalgiabox.tv`. `minSdk 24`. Leanback required, touchscreen not required, 320×180 banner. |
+| **RN-D4** | Identity | `applicationId` `com.littleplay.tv`. `minSdk 24`. Leanback required, touchscreen not required, 320×180 banner. |
 | **RN-D5** | Navigation | Phase-driven tree. No stack router. `BackHandler` cannot `finish` rest or confirmation. |
 | **RN-D6** | Gradle tree | Historical. Not compiled on this track. Do not port broadcast types. |
 | **RN-D7** | PIN KDF host | `@noble/hashes` PBKDF2-HMAC-SHA256 **in core** (async). Parameters as `YT-D10`. |
@@ -252,7 +252,7 @@ Do not `expo install` facebook `react-native`. Do not generate an iOS
 directory for v1; if prebuild creates one, delete it and do not commit it.
 
 Config plugin extras the TV plugin does not give us, via
-`expo-build-properties` + local `withTimedYoutubeTv`:
+`expo-build-properties` + local `withLittlePlay`:
 
 - `minSdk 24` (do not go below 24).
 - `touchscreen required=false`.
@@ -318,7 +318,7 @@ Retired with the broadcast product. Not applicable.
 | Implementers keep reading PLAN.md and rebuild ExoPlayer | Banners on PLAN/prompts; this file’s §3 is RN-only; Step 4 forbids fallbacks |
 | `react-native-tvos` version skew with Expo SDK | Pin from Expo’s TV guide at scaffold; do not `expo install` facebook RN |
 | CNG wipes custom activity flags | Local config plugin, not hand-edits in `android/` that `--clean` destroys |
-| Two `applicationId`s | RN-D4; `apps/tv` identity must stay `com.nostalgiabox.tv` |
+| Two `applicationId`s | RN-D4; `apps/tv` identity must stay `com.littleplay.tv` |
 | Phone prebuild (`EXPO_TV` unset / `isTV` false) | Plugin parameters force TV; do not generate a phone manifest |
 | IFrame incompatible on D6 | Origin triage then platform blocker; halt; no fallback player |
 | This host mistaken for an SDK host | RN-D10; §13 |
@@ -333,7 +333,7 @@ assemble results.
 
 On 2026-09-14 this host:
 
-- Ran `pnpm test` (`@nostalgiabox/core` Vitest + dependency-cruiser) green.
+- Ran `pnpm test` (`@littleplay/core` Vitest + dependency-cruiser) green.
 - Ran `EXPO_TV=1 expo prebuild --platform android --clean`.
 - Ran `apps/tv/android` `:app:assembleDebug` with JDK 17 and
   `~/Library/Android/sdk` (`minSdk 24`, Leanback launchable activity,
@@ -343,7 +343,7 @@ On 2026-09-14 this host:
 
 Consequences:
 
-- `@nostalgiabox/core` can be fully built and tested here — which is a
+- `@littleplay/core` can be fully built and tested here — which is a
   large part of why it is a separate package (§3, `RN-D2`, `RN-D10`).
 - Device/emulator visual (navy Apps-row launch) still needs a TV image or
   the named D6 SKU.

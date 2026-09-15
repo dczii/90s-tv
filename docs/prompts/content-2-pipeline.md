@@ -4,12 +4,12 @@ Copy everything below the rule into a fresh session on this repo.
 
 ---
 
-Implement **Phase C2 (Transcode pipeline and manifest generator)** of the Nostalgia Box
+Implement **Phase C2 (Transcode pipeline and manifest generator)** of the LittlePlay
 delivery plan.
 
 **Read first:** `docs/PLAN.md` (Phase C2), `docs/ARCHITECTURE.md` (§5.1, §8, §2.5).
 
-**Branch:** develop on `claude/nostalgia-box-pipeline-<suffix>`, commit, push. No PR.
+**Branch:** develop on `claude/littleplay-pipeline-<suffix>`, commit, push. No PR.
 
 **Prerequisite:** C1 approved. Requires `ffmpeg`/`ffprobe`, not an Android SDK.
 

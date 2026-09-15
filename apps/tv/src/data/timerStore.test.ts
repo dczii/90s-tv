@@ -5,7 +5,7 @@ import {
   emptyLockout,
   freshPersistedTimer,
   type PinRecord,
-} from "@nostalgiabox/core";
+} from "@littleplay/core";
 import { describe, expect, it } from "vitest";
 
 describe("sqlite kv timer mapping", () => {

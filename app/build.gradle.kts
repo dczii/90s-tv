@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.nostalgiabox.tv"
+    namespace = "com.littleplay.tv"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.nostalgiabox.tv"
+        applicationId = "com.littleplay.tv"
         // minSdk 24, not the PRD's 21 (D2 / A8): it covers essentially all active
         // Android TV hardware and avoids a long tail of Media3, foreground-service and
         // scoped-storage workarounds.

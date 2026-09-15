@@ -6,7 +6,7 @@ import {
   type PinRecord,
   type TimerPhase,
   type TimerPolicy,
-} from "@nostalgiabox/core";
+} from "@littleplay/core";
 import { KV_KEYS, type SqliteKv } from "./sqliteKv";
 
 function encodeBytes(bytes: Uint8Array): string {

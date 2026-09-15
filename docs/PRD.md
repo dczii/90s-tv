@@ -1,6 +1,6 @@
-# Timed YouTube TV — Product Requirements Document (PRD)
+# LittlePlay — Product Requirements Document (PRD)
 
-**Product:** Timed YouTube TV
+**Product:** LittlePlay
 **Platform:** Google TV (Android TV OS)
 **Version:** 1.0 (MVP)
 **Last updated:** 2026-09-14
@@ -12,14 +12,14 @@ ranges, and the enforcement paragraph are law in
 [`youtube-timer/01-product-and-timer-rules.md`](youtube-timer/01-product-and-timer-rules.md)
 (`YT-D1`–`YT-D7`). If this file drifts, that file wins.
 
-The original broadcast/download PRD (Nostalgia Box, FR1–FR15, old §11) is
+The original broadcast/download PRD (LittlePlay, FR1–FR15, old §11) is
 retired. [`PLAN.md`](PLAN.md) and [`prompts/`](prompts/) are historical.
 
 ---
 
 ## 1. Overview
 
-Timed YouTube TV is a parent-configured YouTube timer for Android TV. A parent
+LittlePlay is a parent-configured YouTube timer for Android TV. A parent
 sets a PIN, watch and rest durations, and an allowlist of YouTube videos or
 playlists. A child watches that curated YouTube **inside this app** for a
 bounded window, then sits on a rest screen until an explicit **Continue
@@ -249,7 +249,7 @@ gone.
   from three metres. Primary actions inside a 5% TV safe area.
 - **Compatibility:** Android TV / Google TV, `minSdk 24`. Phone and Apple
   TV are out of v1.
-- **Identity:** `applicationId` `com.nostalgiabox.tv`. Display name Timed
+- **Identity:** `applicationId` `com.littleplay.tv`. Display name Timed
   YouTube TV.
 - **Clock:** Elapsed watch time uses a monotonic clock while the boot is
   unchanged. Reboot recovery may use wall clock. Clock rollback after

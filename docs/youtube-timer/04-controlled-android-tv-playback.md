@@ -1,6 +1,6 @@
 # Step 4 — Controlled Android TV playback
 
-**Parent:** [Timed YouTube TV — Five-Step Plan](../YOUTUBE_TIMER_PLAN.md) §4
+**Parent:** [LittlePlay — Five-Step Plan](../YOUTUBE_TIMER_PLAN.md) §4
 **Status:** blocked on Step 2 (`TimerEngine` events) and Step 3
 (allowlist IDs + playability probe).
 **Produces:** WebView + IFrame Player API, destroy-on-expiry, Compose TV

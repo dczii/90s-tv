@@ -1,4 +1,4 @@
-# Timed YouTube TV — Initial Design Brief
+# LittlePlay — Initial Design Brief
 
 ## Format
 

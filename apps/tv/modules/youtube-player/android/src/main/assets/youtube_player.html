@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <style>
+      html,
+      body,
+      #player {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="player"></div>
+    <script>
+      // YT-D21 bridge: native calls attachSession/loadVideo/pause/stop/destroyPlayer.
+      // Page → native: NativeBridge.onPlayerEvent(JSON) with echoed generation.
+      var generation = 0;
+      var player = null;
+      var pendingVideoId = null;
+      var apiReady = false;
+
+      function emit(type, extra) {
+        var payload = { type: type, generation: generation };
+        if (extra) {
+          for (var k in extra) {
+            if (Object.prototype.hasOwnProperty.call(extra, k)) {
+              payload[k] = extra[k];
+            }
+          }
+        }
+        try {
+          if (window.NativeBridge && NativeBridge.onPlayerEvent) {
+            NativeBridge.onPlayerEvent(JSON.stringify(payload));
+          }
+        } catch (e) {
+          /* ignore bridge errors */
+        }
+      }
+
+      function attachSession(g) {
+        generation = Number(g) || 0;
+      }
+
+      function mapState(code) {
+        // YT.PlayerState
+        switch (code) {
+          case -1:
+            return "unstarted";
+          case 0:
+            return "ended";
+          case 1:
+            return "playing";
+          case 2:
+            return "paused";
+          case 3:
+            return "buffering";
+          case 5:
+            return "cued";
+          default:
+            return "unknown";
+        }
+      }
+
+      function createOrLoad(id) {
+        if (player) {
+          try {
+            player.loadVideoById(id);
+          } catch (e) {
+            emit("error", { code: 5 });
+          }
+          return;
+        }
+        player = new YT.Player("player", {
+          height: "100%",
+          width: "100%",
+          videoId: id,
+          playerVars: {
+            autoplay: 1,
+            controls: 1,
+            enablejsapi: 1,
+            origin: "https://appassets.androidplatform.net",
+            playsinline: 1,
+            rel: 0,
+            modestbranding: 1,
+            fs: 1,
+          },
+          events: {
+            onReady: function () {
+              emit("ready", {});
+            },
+            onStateChange: function (e) {
+              var state = mapState(e.data);
+              emit("stateChange", { state: state, code: e.data });
+              if (state === "ended") {
+                emit("ended", {});
+              }
+            },
+            onError: function (e) {
+              emit("error", { code: e.data });
+            },
+          },
+        });
+      }
+
+      function loadVideo(id) {
+        if (!id) return;
+        if (!apiReady || typeof YT === "undefined" || !YT.Player) {
+          pendingVideoId = id;
+          return;
+        }
+        pendingVideoId = null;
+        createOrLoad(id);
+      }
+
+      function pause() {
+        try {
+          if (player && player.pauseVideo) player.pauseVideo();
+        } catch (e) {}
+      }
+
+      function stop() {
+        try {
+          if (player && player.stopVideo) player.stopVideo();
+        } catch (e) {}
+      }
+
+      function destroyPlayer() {
+        try {
+          if (player && player.destroy) player.destroy();
+        } catch (e) {}
+        player = null;
+        pendingVideoId = null;
+      }
+
+      function onYouTubeIframeAPIReady() {
+        apiReady = true;
+        if (pendingVideoId) {
+          var id = pendingVideoId;
+          pendingVideoId = null;
+          createOrLoad(id);
+        }
+      }
+      window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+    </script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+  </body>
+</html>

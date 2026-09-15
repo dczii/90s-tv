@@ -1,4 +1,4 @@
-# Timed YouTube TV
+# LittlePlay
 
 A parent-configured YouTube timer for Android TV. A parent sets a PIN, watch
 and rest durations, and an allowlist. A child watches curated YouTube inside
@@ -26,8 +26,8 @@ retired broadcast/download plan.
 ## Repo layout
 
 ```
-packages/core    @nostalgiabox/core — Node-testable domain (no react-native)
-apps/tv          Expo app, slug timed-youtube-tv, applicationId com.nostalgiabox.tv
+packages/core    @littleplay/core — Node-testable domain (no react-native)
+apps/tv          Expo app, slug littleplay, applicationId com.littleplay.tv
 ```
 
 The Gradle `:core` / `:app` tree is historical on this track. Do not treat

@@ -26,6 +26,8 @@ export const KV_KEYS = {
   pinLockoutElapsedMs: "pin_lockout_elapsed_ms",
   pinLockoutWallMs: "pin_lockout_wall_ms",
   pinLockoutBootCount: "pin_lockout_boot_count",
+  allowlistCursorEntryId: "allowlist_cursor_entry_id",
+  allowlistCursorIndex: "allowlist_cursor_index",
 } as const;
 
 export type KvKey = (typeof KV_KEYS)[keyof typeof KV_KEYS];

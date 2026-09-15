@@ -1,9 +1,11 @@
 # Step 5 — Verify policy, API, and device
 
 **Parent:** [React Native Five-Step Plan](../REACT_NATIVE_PLAN.md) §5
-**Status:** blocked on Steps 1–4. Adds no product surface.
+**Status:** verification recorded in
+[`VERIFICATION.md`](VERIFICATION.md). Automated host checks green;
+hardware D6 script still outstanding.
 **Produces:** a recorded checklist (automated + D6 hardware) that defines
-**green** for Timed YouTube TV on the React Native track. A platform-blocker
+**green** for LittlePlay on the React Native track. A platform-blocker
 note if the iframe cannot play on the named TV — and a halt, not a fallback.
 
 ---
@@ -98,7 +100,7 @@ device-code UI + RN focus engine.
 
 Execute YouTube-timer 05 items 1–11 **unchanged**. Translate only:
 
-- `am force-stop` package is still `com.nostalgiabox.tv`.
+- `am force-stop` package is still `com.littleplay.tv`.
 - “no WebView” means dumpsys / no `YoutubePlayerView` / no YouTube audio.
 - Focus visible at 3 m still applies; RN focus rings must meet the brief.
 

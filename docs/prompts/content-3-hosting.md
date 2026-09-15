@@ -4,11 +4,11 @@ Copy everything below the rule into a fresh session on this repo.
 
 ---
 
-Work **Phase C3 (Host and verify)** of the Nostalgia Box delivery plan.
+Work **Phase C3 (Host and verify)** of the LittlePlay delivery plan.
 
 **Read first:** `docs/PLAN.md` (Phase C3), `docs/ARCHITECTURE.md` (§2.4, §11).
 
-**Branch:** develop on `claude/nostalgia-box-hosting-<suffix>`, commit, push. No PR.
+**Branch:** develop on `claude/littleplay-hosting-<suffix>`, commit, push. No PR.
 
 **Prerequisite:** C2 complete. **C3 must land before P3 starts** — it is where the
 content and app tracks meet.

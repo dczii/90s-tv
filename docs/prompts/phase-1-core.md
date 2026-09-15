@@ -4,13 +4,13 @@ Copy everything below the rule into a fresh session on this repo.
 
 ---
 
-Implement **Phase 1 (`:core` — the broadcast clock)** of the Nostalgia Box delivery plan.
+Implement **Phase 1 (`:core` — the broadcast clock)** of the LittlePlay delivery plan.
 
 **Read first:** `docs/PLAN.md` (Phase P1), `docs/ARCHITECTURE.md` (§1, §2.1, §2.3, §3, §4,
 §5.1), `docs/PRD.md` (FR1–FR6). Where they disagree, the architecture document wins on
 *how* and the PRD wins on *what*.
 
-**Branch:** develop on `claude/nostalgia-box-core-<suffix>`, commit, push. Do not open a PR.
+**Branch:** develop on `claude/littleplay-core-<suffix>`, commit, push. Do not open a PR.
 
 ## Decisions already made — build to these, don't re-litigate
 

@@ -4,11 +4,11 @@ Copy everything below the rule into a fresh session on this repo.
 
 ---
 
-Work **Phase C1 (Source the content)** of the Nostalgia Box delivery plan.
+Work **Phase C1 (Source the content)** of the LittlePlay delivery plan.
 
 **Read first:** `docs/PLAN.md` (Phase C1), `docs/PRD.md` (§6).
 
-**Branch:** develop on `claude/nostalgia-box-content-<suffix>`, commit, push. No PR.
+**Branch:** develop on `claude/littleplay-content-<suffix>`, commit, push. No PR.
 Media files are **not** committed — only the shortlist and provenance records.
 
 ## What this phase actually produces

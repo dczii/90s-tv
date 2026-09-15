@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { BackHandler, StyleSheet, Text, View } from "react-native";
+import { moveTaskToBack } from "youtube-player";
 import { useAppSession } from "./app/session";
+import { usePlayerSession } from "./player/PlayerSession";
+import { usePlaybackController } from "./player/usePlaybackController";
 import { WelcomeScreen } from "./ui/screens/WelcomeScreen";
 import { TimerSetupScreen } from "./ui/screens/TimerSetupScreen";
 import {
@@ -16,6 +19,17 @@ import { colors, safe } from "./theme/tokens";
 
 export default function RootApp() {
   const session = useAppSession();
+  const player = usePlayerSession();
+  const playback = usePlaybackController({
+    phase: session.snapshot?.phase,
+    kv: session.kv,
+    entries: session.allowlistEntries,
+    player,
+    confirmWatching: session.confirmWatching,
+    onAuthChanged: () => {
+      void session.refreshSignedIn();
+    },
+  });
 
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -25,6 +39,10 @@ export default function RootApp() {
       }
       if (session.showSettings) {
         session.closeSettings();
+        return true;
+      }
+      if (session.snapshot?.phase === "Playing") {
+        moveTaskToBack();
         return true;
       }
       if (
@@ -109,9 +127,6 @@ export default function RootApp() {
         <ChooseContentScreen
           allowlist={session.allowlistRepo}
           onSaved={session.onAllowlistSaved}
-          onAuthChanged={() => {
-            void session.refreshSignedIn();
-          }}
           onBack={
             session.contentRoute === "choose"
               ? session.closeContent
@@ -172,8 +187,11 @@ export default function RootApp() {
         <ReadyScreen
           snapshot={snapshot}
           allowlistEmpty={session.allowlistEntries.length === 0}
+          continueBusy={playback.ui.continueBusy}
+          noPlayable={playback.ui.noPlayableOnConfirm}
+          continueError={playback.ui.continueError}
           onContinue={() => {
-            session.confirmWatching();
+            void playback.continueWatching();
           }}
           onOpenSettings={session.openSettings}
         />
@@ -194,7 +212,11 @@ export default function RootApp() {
         <StatusBar hidden />
         <PlayingShell
           snapshot={snapshot}
-          onOpenSettings={session.openSettings}
+          player={player}
+          videoId={playback.ui.videoId}
+          videoTitle={playback.ui.videoTitle}
+          noPlayableSlate={playback.ui.noPlayableSlate}
+          showInfo={playback.ui.showInfo}
         />
       </>
     );

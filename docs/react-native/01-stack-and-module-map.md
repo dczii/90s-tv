@@ -2,7 +2,7 @@
 
 **Parent:** [React Native Five-Step Plan](../REACT_NATIVE_PLAN.md) §1
 **Status:** done. Product docs and Expo TV shell landed. Debug APK
-`com.nostalgiabox.tv` assembled on this host (Leanback launchable
+`com.littleplay.tv` assembled on this host (Leanback launchable
 activity, 320×180 banner, minSdk 24, landscape, `FLAG_KEEP_SCREEN_ON`).
 No Android TV system image is installed here, so Apps-row visual on an
 emulator/D6 is still outstanding. `pnpm test` is green on Node.
@@ -17,7 +17,7 @@ with a Leanback banner.
 
 ## Goal
 
-Lock how Timed YouTube TV is built in React Native without inventing new
+Lock how LittlePlay is built in React Native without inventing new
 timer policy. The child still watches curated YouTube inside this app for a
 bounded window, then sits on a rest screen until **Continue watching**. The
 player is still an IFrame in a WebView we destroy on expiry.
@@ -31,7 +31,7 @@ DataStore, Hilt) cannot be “adapted” into Expo. Replacement, not aliasing.
 
 Copied from the parent plan and sharpened:
 
-- [x] `docs/PRD.md` describes Timed YouTube TV (parent + child on Android TV).
+- [x] `docs/PRD.md` describes LittlePlay (parent + child on Android TV).
       Old FR1–FR15 and broadcast §11 are gone. New numbered FRs match
       [`youtube-timer/05`](../youtube-timer/05-verify-policy-api-device.md)
       YT-D29 / the ten green lines. The enforcement paragraph is verbatim
@@ -118,8 +118,8 @@ naming). Do not put `package.json` over the Gradle root in a way that makes
 `./gradlew :core:test` the default; the RN track’s default test is Vitest.
 
 ```
-packages/core/          name: @nostalgiabox/core
-apps/tv/                Expo app, name: tv, slug: timed-youtube-tv
+packages/core/          name: @littleplay/core
+apps/tv/                Expo app, name: tv, slug: littleplay
 apps/tv/modules/        local Expo modules (created in Steps 2 and 4)
 ```
 
@@ -128,8 +128,8 @@ once prebuild runs). Rejected: rewriting the existing `app/` Kotlin module
 into RN (CNG will generate `apps/tv/android/`). Rejected: a third workspace
 for “shared UI” — eight screens, one app.
 
-`applicationId` / Android `package`: `com.nostalgiabox.tv`. Display name
-Timed YouTube TV. Renaming the id is out of scope.
+`applicationId` / Android `package`: `com.littleplay.tv`. Display name
+LittlePlay. Renaming the id is out of scope.
 
 ### Stack (RN-D1)
 
@@ -148,7 +148,7 @@ Template: `npx create-expo-app apps/tv -e with-tv` then move into the
 workspace. Do **not** start from `with-router-tv` (BACK would pop rest).
 
 Config plugin extras the TV plugin does not give us, via
-`expo-build-properties` + a small local config plugin `withTimedYoutubeTv`:
+`expo-build-properties` + a small local config plugin `withLittlePlay`:
 
 - `minSdk 24` (not Expo’s default if higher is fine; do not go below 24).
 - `touchscreen required=false`.
@@ -235,7 +235,7 @@ later steps; this step does not reopen them.
 | **RN-D1** | Stack | Expo CNG + `react-native-tvos` matching the pinned Expo SDK + `@react-native-tvos/config-tv` with `androidTVRequired: true`. No Expo Go. No phone. No Apple TV in v1. |
 | **RN-D2** | Domain package | `packages/core` TypeScript. No `react` / `react-native` / `expo*`. Vitest on Node. |
 | **RN-D3** | Native budget | Only `device-time`, `android-identity`, `youtube-player`. Fourth module = architecture change. |
-| **RN-D4** | Identity | `applicationId` `com.nostalgiabox.tv`. `minSdk 24`. Leanback required, touchscreen not required, 320×180 banner. |
+| **RN-D4** | Identity | `applicationId` `com.littleplay.tv`. `minSdk 24`. Leanback required, touchscreen not required, 320×180 banner. |
 | **RN-D5** | Navigation | Phase-driven tree. No stack router. `BackHandler` cannot `finish` rest or confirmation. |
 | **RN-D6** | Gradle tree | Historical. Not compiled on this track. Do not port broadcast types. |
 | **RN-D7** | PIN KDF host | `@noble/hashes` PBKDF2-HMAC-SHA256 **in core** (async). Not `expo-crypto` (no PBKDF2). Not `SecretKeyFactory` (would force a native module and API 26). Same parameters as YT-D10: 16-byte salt, 32-byte dk, 120_000 iterations, timing-safe compare. |
@@ -265,7 +265,7 @@ screens, deleting the Gradle tree (wait until Step 2 tests are green).
 
 | Document / tree | Action |
 |---|---|
-| PRD §1–§13 | Rewrite for Timed YouTube TV (same product text as Kotlin Step 1) |
+| PRD §1–§13 | Rewrite for LittlePlay (same product text as Kotlin Step 1) |
 | ARCHITECTURE.md | Rewrite for Expo + `packages/core`. Kotlin `:core` map does not survive as law |
 | PLAN.md / prompts | Banner: broadcast track is historical; RN track is `docs/react-native/` if chosen |
 | youtube-timer/*.md | Remain **product** law. Implementation locks that name Gradle/Hilt/Compose are the other track |
@@ -318,4 +318,4 @@ screens, deleting the Gradle tree (wait until Step 2 tests are green).
 | Implementers keep reading Kotlin Step 2 and add DataStore/Hilt | Architecture §3 is RN-only; this folder is the delivery track |
 | `react-native-tvos` version skew with Expo SDK | Pin from Expo’s TV guide at scaffold; do not `expo install` a facebook RN |
 | CNG wipes custom activity flags | Local config plugin, not hand-edits in `android/` that `--clean` destroys |
-| Two `applicationId`s if someone scaffolds a new package name | RN-D4; fail CI if `applicationId` ≠ `com.nostalgiabox.tv` |
+| Two `applicationId`s if someone scaffolds a new package name | RN-D4; fail CI if `applicationId` ≠ `com.littleplay.tv` |

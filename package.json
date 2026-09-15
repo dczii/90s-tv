@@ -1,8 +1,8 @@
 {
-  "name": "nostalgiabox",
+  "name": "littleplay",
   "private": true,
   "scripts": {
-    "test": "pnpm --filter @nostalgiabox/core test && pnpm --filter tv test"
+    "test": "pnpm --filter @littleplay/core test && pnpm --filter tv test"
   },
   "packageManager": "pnpm@10.30.1",
   "engines": {
