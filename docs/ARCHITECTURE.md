@@ -4,7 +4,7 @@ Companion to the PRD (v1.0 MVP). This document decides **how** this repo
 builds Timed YouTube TV: Expo TV + a Node-testable TypeScript domain
 package. Product law (`YT-D1`–`YT-D29`) lives in
 [`youtube-timer/`](youtube-timer/README.md) and is not restated here except
-by reference. Stack and native-seam locks (`RN-D1`–`RN-D11`) live here and
+by reference. Stack and native-seam locks (`RN-D1`–`RN-D19`) live here and
 in [`react-native/`](react-native/README.md).
 
 When the two disagree on *what the app does*, YouTube-timer wins. When they
@@ -121,8 +121,8 @@ here. Default `pnpm test` runs `@nostalgiabox/core`.
 
 ## 4. Domain package (`packages/core`)
 
-Implemented in Step 2+. Step 1 only locks the boundary and a placeholder
-test.
+Implemented in Step 2. Timer phase machine, dual-clock recovery, and PIN
+gate live here.
 
 - `"type": "module"`. Vitest. No dependency on `react`, `react-native`, or
   `expo*`.
@@ -134,11 +134,10 @@ test.
   (`RN-D7`). Same parameters as `YT-D10`: 16-byte salt, 32-byte dk,
   120_000 iterations, timing-safe compare. Not `expo-crypto` (no PBKDF2).
   Not `SecretKeyFactory` (would force a native module and API 26).
-- Kover 100% on Kotlin `TimerEngine` becomes Vitest coverage on
-  `timerEngine.ts` (100% branch/line) in Step 2.
+- Vitest coverage on `timerEngine.ts` is 100% branch/line.
 
-`TimeView` is an interface core owns. `apps/tv` supplies it from a native
-module in Step 2: `elapsedRealtime` + wall + `BOOT_COUNT` as
+`TimeView` is an interface core owns. `apps/tv` supplies it from the
+`device-time` native module: `elapsedRealtime` + wall + `BOOT_COUNT` as
 `number | null`. Missing boot count is `null`, never `0`.
 `Date.now() + performance.now()` is not `elapsedRealtime` and does not
 read `BOOT_COUNT`.
@@ -227,6 +226,14 @@ Do not rewrite them here. `YT-D8`–`YT-D29` remain law for later steps.
 | **RN-D9** | D6 | Same as `YT-D27`: named SKU, default Chromecast with Google TV (4K). |
 | **RN-D10** | Test split | Core Vitest **here**. `expo run:android` / assemble **on an SDK machine**. Never conflate. |
 | **RN-D11** | Keep-awake | Main activity `FLAG_KEEP_SCREEN_ON`. |
+| **RN-D12** | Time source | Expo module `device-time`. `bootCount` from `Settings.Global.getString`; missing ≠ 0. |
+| **RN-D13** | KV store | `expo-sqlite` table `kv`, keys identical to YouTube-timer 02. |
+| **RN-D14** | Engine lifetime | One `TimerEngine` per JS runtime, created after kv read, held outside React. React subscribes to snapshots. |
+| **RN-D15** | Resume | Native `onActivityResume` + AppState; tick then snapshot then maybe player. |
+| **RN-D16** | HTTP | `fetch` in `apps/tv`. No OkHttp wrapper unless `fetch` cannot set the Android headers (it can). |
+| **RN-D17** | Tokens | `expo-secure-store` only. Disconnect keeps allowlist. |
+| **RN-D18** | Identity | Native `android-identity` for package + cert SHA-1 on API-key calls. |
+| **RN-D19** | Catalog DB | Same sqlite file as timer `kv`. New tables; not a second database. |
 
 ### Pinned versions (scaffold time)
 

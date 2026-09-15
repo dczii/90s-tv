@@ -1,7 +1,10 @@
 # Step 3 — YouTube connection and content curation
 
 **Parent:** [React Native Five-Step Plan](../REACT_NATIVE_PLAN.md) §3
-**Status:** blocked on Step 2 (`TimerEngine` + PIN gate).
+**Status:** done. Device-code OAuth, SecureStore tokens, `android-identity`,
+Data API client, core URL parser + allowlist types, sqlite allowlist /
+catalog tables, Connect YouTube and Choose content screens. Manual path
+works without tokens. `pnpm test` green on Node.
 **Produces:** device-code OAuth in JS, `expo-secure-store` tokens,
 `android-identity` native module, Data API reads, core allowlist + URL
 parser, sqlite allowlist, Connect YouTube and Choose allowed content
@@ -27,21 +30,21 @@ This file maps them onto `fetch`, SecureStore, and one native identity module.
 
 Copied from the parent plan and sharpened:
 
-- [ ] Device-code flow (RFC 8628) shows the verification URL and user
+- [x] Device-code flow (RFC 8628) shows the verification URL and user
       code; a successful poll stores access + refresh tokens in
       `expo-secure-store`. Scope is only
       `https://www.googleapis.com/auth/youtube.readonly`.
-- [ ] Parent can select playlists and subscriptions from the account, and
+- [x] Parent can select playlists and subscriptions from the account, and
       persist them as `AllowlistEntry` rows.
-- [ ] With **no** account, parent can add public video and playlist URLs;
+- [x] With **no** account, parent can add public video and playlist URLs;
       they persist in the same table with `source = ManualUrl`.
-- [ ] Relaunch restores the allowlist and, if tokens exist, the signed-in
+- [x] Relaunch restores the allowlist and, if tokens exist, the signed-in
       state without repeating the user-code screen.
-- [ ] Expired auth, revoked access, quota, unavailable, and not-embeddable
+- [x] Expired auth, revoked access, quota, unavailable, and not-embeddable
       have named errors and parent-visible copy. An empty or fully
       unplayable allowlist disables Continue watching (Step 4); it does
       not crash.
-- [ ] No file under app storage is a YouTube media body.
+- [x] No file under app storage is a YouTube media body.
 
 ---
 
@@ -201,11 +204,11 @@ safe area. Do not require a companion-phone type path in v1.
 
 Port 03’s table. Additional:
 
-| Failure | Response |
-|---|---|
-| SecureStore unavailable | Block Connect; Manual path still works; surface “cannot store Google sign-in on this device” |
-| Identity module SHA-1 empty | Treat unexpected 403 as config (register debug cert), not “manual path broken” |
-| `fetch` CORS | Native `fetch` has no CORS; do not add a browser polyfill that invents one |
+| Failure                     | Response                                                                                     |
+| --------------------------- | -------------------------------------------------------------------------------------------- |
+| SecureStore unavailable     | Block Connect; Manual path still works; surface “cannot store Google sign-in on this device” |
+| Identity module SHA-1 empty | Treat unexpected 403 as config (register debug cert), not “manual path broken”               |
+| `fetch` CORS                | Native `fetch` has no CORS; do not add a browser polyfill that invents one                   |
 
 ---
 
@@ -217,12 +220,12 @@ Port 03’s table. Additional:
 
 ## Decisions this step must lock
 
-| ID | Decision | Lock |
-|---|---|---|
-| **RN-D16** | HTTP | `fetch` in `apps/tv`. No OkHttp wrapper unless `fetch` cannot set the Android headers (it can). |
-| **RN-D17** | Tokens | `expo-secure-store` only. Disconnect keeps allowlist. |
-| **RN-D18** | Identity | Native `android-identity` for package + cert SHA-1 on API-key calls. |
-| **RN-D19** | Catalog DB | Same sqlite file as timer `kv`. New tables; not a second database. |
+| ID         | Decision   | Lock                                                                                            |
+| ---------- | ---------- | ----------------------------------------------------------------------------------------------- |
+| **RN-D16** | HTTP       | `fetch` in `apps/tv`. No OkHttp wrapper unless `fetch` cannot set the Android headers (it can). |
+| **RN-D17** | Tokens     | `expo-secure-store` only. Disconnect keeps allowlist.                                           |
+| **RN-D18** | Identity   | Native `android-identity` for package + cert SHA-1 on API-key calls.                            |
+| **RN-D19** | Catalog DB | Same sqlite file as timer `kv`. New tables; not a second database.                              |
 
 ---
 
@@ -238,10 +241,10 @@ brief screens, named errors, env keys, identity module, QR svg.
 
 ## What this step retires or amends
 
-| Item | Action |
-|---|---|
-| Manifest URL / hosted media | Stay gone |
-| WorkManager downloads | Stay gone |
+| Item                                      | Action                                                 |
+| ----------------------------------------- | ------------------------------------------------------ |
+| Manifest URL / hosted media               | Stay gone                                              |
+| WorkManager downloads                     | Stay gone                                              |
 | Kotlin EncryptedSharedPreferences adapter | Not built on this track; SecureStore is the equivalent |
 
 ---
@@ -286,9 +289,9 @@ Hardware OAuth is Step 5.
 
 ## Open risks
 
-| Risk | Mitigation |
-|---|---|
-| Google blocks TV device-code | Record as platform auth blocker in Step 5; Manual path still ships |
-| Restricted key 403 on sideload cert | Register debug SHA-1; identity module must report the cert the APK actually signed with |
-| SecureStore quirks on Android TV | Step 5 round-trip; if it fails, that is a platform blocker for *account* connect, not for Manual |
-| `expo-image` on TV | Listed as supported; fail soft on poster rows |
+| Risk                                | Mitigation                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Google blocks TV device-code        | Record as platform auth blocker in Step 5; Manual path still ships                               |
+| Restricted key 403 on sideload cert | Register debug SHA-1; identity module must report the cert the APK actually signed with          |
+| SecureStore quirks on Android TV    | Step 5 round-trip; if it fails, that is a platform blocker for _account_ connect, not for Manual |
+| `expo-image` on TV                  | Listed as supported; fail soft on poster rows                                                    |

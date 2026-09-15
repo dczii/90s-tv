@@ -1,8 +1,11 @@
 # Step 2 — Persistent timer and parent controls
 
 **Parent:** [React Native Five-Step Plan](../REACT_NATIVE_PLAN.md) §2
-**Status:** unblocked. Step 1 PRD, RN architecture, and `apps/tv` shell
-are on disk.
+**Status:** done. `@nostalgiabox/core` ships `TimerEngine` + `PinGate` with
+Vitest (100% branch/line on `timerEngine.ts`). `apps/tv` supplies
+`device-time`, `expo-sqlite` kv, and D-pad Welcome / Timer setup / PIN /
+Parent settings / phase shell. `pnpm test` is green on Node.
+**Blocked on:** nothing for Step 3.
 **Produces:** `@nostalgiabox/core` timer + PIN API with Vitest; `device-time`
 native module; `expo-sqlite` adapter; PIN UI wired to Welcome / Timer setup /
 Parent settings (screens can be ugly; Step 4 owns visual pass).
@@ -27,23 +30,23 @@ This file only maps them onto TypeScript, SQLite, and an Expo module.
 
 Copied from the parent plan and sharpened:
 
-- [ ] `npm test -w packages/core` green on this machine (no Android SDK).
+- [x] `npm test -w packages/core` green on this machine (no Android SDK).
       Boundary lint still forbids `react-native`. Coverage 100% branch/line
       on `timerEngine.ts`.
-- [ ] Killing the app during `Playing` and during `Resting`, then relaunching
+- [x] Killing the app during `Playing` and during `Resting`, then relaunching
       on the same boot, restores remaining time from the monotonic deadline
       (instrumented in core via `TimeView`; sqlite adapter unit-tested in
       Node with a file DB; native `device-time` tested on an SDK machine in
       Step 5).
-- [ ] Simulated reboot (`bootCount` incremented, `elapsedRealtimeMs` reset,
+- [x] Simulated reboot (`bootCount` incremented, `elapsedRealtimeMs` reset,
       wall clock advanced) restores from the wall-clock deadline and does
       not grant a fresh watch window.
-- [ ] `confirmWatching` is required to enter `Playing`. Rest expiry and
+- [x] `confirmWatching` is required to enter `Playing`. Rest expiry and
       `completeSetup` land on `AwaitingConfirmation`.
-- [ ] Duration change preserves elapsed time in the current phase (YT-D12).
+- [x] Duration change preserves elapsed time in the current phase (YT-D12).
       PIN mismatch and lockout reject duration, reset, and (once Step 3
       exists) content/account actions.
-- [ ] The PIN is not stored; a salted PBKDF2-HMAC-SHA256 verifier is.
+- [x] The PIN is not stored; a salted PBKDF2-HMAC-SHA256 verifier is.
       Failed attempts rate-limit.
 
 ---
@@ -83,27 +86,23 @@ Same screens as Kotlin Step 2 (Step 4 restyles):
 Port the Kotlin API from YouTube-timer 02 to TypeScript. Same names, same
 errors, same legal transitions. Differences that are allowed:
 
-| Kotlin | TypeScript |
-|---|---|
-| `Long` milliseconds | `number` (safe for epoch ms) |
-| `Int?` bootCount | `number \| null` — **never** coerce missing to `0` |
-| `sealed class` | discriminated unions |
-| `TimerEngine` class, sync commands | same, sync commands |
-| `PinHasher.hash` sync | **`async`** (`RN-D7`). `PinGate.verify` is `async` |
-| `ByteArray` salt/hash | `Uint8Array`; persist as base64 in sqlite |
+| Kotlin                             | TypeScript                                         |
+| ---------------------------------- | -------------------------------------------------- |
+| `Long` milliseconds                | `number` (safe for epoch ms)                       |
+| `Int?` bootCount                   | `number \| null` — **never** coerce missing to `0` |
+| `sealed class`                     | discriminated unions                               |
+| `TimerEngine` class, sync commands | same, sync commands                                |
+| `PinHasher.hash` sync              | **`async`** (`RN-D7`). `PinGate.verify` is `async` |
+| `ByteArray` salt/hash              | `Uint8Array`; persist as base64 in sqlite          |
 
 ```ts
 export type TimeView = {
-  elapsedRealtimeMs: number
-  wallClockMs: number
-  bootCount: number | null
-}
+  elapsedRealtimeMs: number;
+  wallClockMs: number;
+  bootCount: number | null;
+};
 
-export type TimerPhase =
-  | 'Setup'
-  | 'AwaitingConfirmation'
-  | 'Playing'
-  | 'Resting'
+export type TimerPhase = "Setup" | "AwaitingConfirmation" | "Playing" | "Resting";
 ```
 
 `PersistedTimer`, `TimerPolicy`, `TimerSnapshot`, `TimerEvent`,
@@ -142,12 +141,12 @@ JS:
 
 ```ts
 export function deviceTime(): TimeView {
-  const raw = DeviceTime.deviceTime()
+  const raw = DeviceTime.deviceTime();
   return {
     elapsedRealtimeMs: raw.elapsedRealtimeMs,
     wallClockMs: raw.wallClockMs,
     bootCount: raw.bootCount ?? null,
-  }
+  };
 }
 ```
 
@@ -212,15 +211,15 @@ mapping of `PersistedTimer` ↔ rows is tested here.
 ### PIN — `@noble/hashes` in core (RN-D7)
 
 ```ts
-export const PIN_ITERATIONS = 120_000
+export const PIN_ITERATIONS = 120_000;
 
 export async function hashPin(
   pin: string,
   salt: Uint8Array,
   iterations = PIN_ITERATIONS,
-): Promise<PinRecord>
+): Promise<PinRecord>;
 
-export async function verifyPin(pin: string, record: PinRecord): Promise<boolean>
+export async function verifyPin(pin: string, record: PinRecord): Promise<boolean>;
 ```
 
 - Algorithm: PBKDF2-HMAC-SHA256 via `pbkdf2Async(sha256, pin, salt, { c, dkLen: 32 })`.
@@ -257,11 +256,11 @@ transition; `tick` emits `PolicyExpiredCurrentPhase`.
 
 Same named errors as YouTube-timer 02, plus:
 
-| Failure | Named result |
-|---|---|
-| `device-time` missing on a phone build | Do not ship; Leanback required. Dev: throw at boot |
-| sqlite open fails | Stay on a blocking error slate; do not pretend Setup with empty memory that will later overwrite disk |
-| `BOOT_COUNT` unavailable | `bootCount = null`; wall-only recover; log |
+| Failure                                | Named result                                                                                          |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `device-time` missing on a phone build | Do not ship; Leanback required. Dev: throw at boot                                                    |
+| sqlite open fails                      | Stay on a blocking error slate; do not pretend Setup with empty memory that will later overwrite disk |
+| `BOOT_COUNT` unavailable               | `bootCount = null`; wall-only recover; log                                                            |
 
 ### Important flows
 
@@ -281,12 +280,12 @@ setState.
 
 ## Decisions this step must lock
 
-| ID | Decision | Lock |
-|---|---|---|
-| **RN-D12** | Time source | Expo module `device-time`. `bootCount` from `Settings.Global.getString`; missing ≠ 0. |
-| **RN-D13** | KV store | `expo-sqlite` table `kv`, keys identical to YouTube-timer 02. |
+| ID         | Decision        | Lock                                                                                                        |
+| ---------- | --------------- | ----------------------------------------------------------------------------------------------------------- |
+| **RN-D12** | Time source     | Expo module `device-time`. `bootCount` from `Settings.Global.getString`; missing ≠ 0.                       |
+| **RN-D13** | KV store        | `expo-sqlite` table `kv`, keys identical to YouTube-timer 02.                                               |
 | **RN-D14** | Engine lifetime | One `TimerEngine` per JS runtime, created after kv read, held outside React. React subscribes to snapshots. |
-| **RN-D15** | Resume | Native `onActivityResume` + AppState; tick then snapshot then maybe player. |
+| **RN-D15** | Resume          | Native `onActivityResume` + AppState; tick then snapshot then maybe player.                                 |
 
 No new product IDs. YT-D8–D13 stay.
 
@@ -305,11 +304,11 @@ phase shell. Coverage on `timerEngine.ts`.
 
 ## What this step retires or amends
 
-| Item | Action |
-|---|---|
-| Kotlin `TimerEngine` plan as implementation | Do not write it on this track |
-| Broadcast `:core` types | Do not port. Optional delete of Kotlin sources after this Vitest suite is green |
-| `FakeClock` | Mutable `TimeView` in tests |
+| Item                                        | Action                                                                          |
+| ------------------------------------------- | ------------------------------------------------------------------------------- |
+| Kotlin `TimerEngine` plan as implementation | Do not write it on this track                                                   |
+| Broadcast `:core` types                     | Do not port. Optional delete of Kotlin sources after this Vitest suite is green |
+| `FakeClock`                                 | Mutable `TimeView` in tests                                                     |
 
 ---
 
@@ -352,9 +351,9 @@ once, PIN lockout ladder). Use fake `TimeView`.
 
 ## Open risks
 
-| Risk | Mitigation |
-|---|---|
-| JS 120k PBKDF2 feels slow on D6 | Async; disable cells while pending; measure in Step 5 before going native |
-| AppState misses first resume | Native activity event is the primary trigger |
-| expo-sqlite API changes across SDK | Pin SDK; adapter behind `KvStore` interface |
-| CNG `--clean` drops `device-time` | Local Expo module under `apps/tv/modules/` so prebuild keeps it |
+| Risk                               | Mitigation                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------- |
+| JS 120k PBKDF2 feels slow on D6    | Async; disable cells while pending; measure in Step 5 before going native |
+| AppState misses first resume       | Native activity event is the primary trigger                              |
+| expo-sqlite API changes across SDK | Pin SDK; adapter behind `KvStore` interface                               |
+| CNG `--clean` drops `device-time`  | Local Expo module under `apps/tv/modules/` so prebuild keeps it           |

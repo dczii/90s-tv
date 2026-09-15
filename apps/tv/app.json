@@ -45,7 +45,9 @@
             "minSdkVersion": 24
           }
         }
-      ]
+      ],
+      "expo-sqlite",
+      "expo-secure-store"
     ]
   }
 }

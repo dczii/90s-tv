@@ -2,7 +2,7 @@
   "name": "nostalgiabox",
   "private": true,
   "scripts": {
-    "test": "pnpm --filter @nostalgiabox/core test"
+    "test": "pnpm --filter @nostalgiabox/core test && pnpm --filter tv test"
   },
   "packageManager": "pnpm@10.30.1",
   "engines": {

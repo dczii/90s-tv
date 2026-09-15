@@ -36,15 +36,17 @@ The Gradle `:core` / `:app` tree is historical on this track. Do not treat
 ## Building
 
 ```
-pnpm test                         # packages/core Vitest + import boundary (Node only)
+pnpm test                         # core Vitest (100% timerEngine) + tv kv mapping
 pnpm --filter tv prebuild:tv      # EXPO_TV=1 expo prebuild --platform android --clean
 pnpm --filter tv android          # needs ANDROID_HOME / an Android TV emulator or device
 ```
 
-`packages/core` tests run anywhere Node 20+ does. Expo SDK 57 wants
-Node 22 (see `.nvmrc`). `apps/tv` assemble needs JDK 17 and an Android
-SDK; this host assembled a debug APK on 2026-09-14. Installing onto the
-Apps row still needs an Android TV emulator or D6.
+`packages/core` holds `TimerEngine`, `PinGate`, and the YouTube URL /
+allowlist model (Node only). `apps/tv` supplies `device-time`,
+`android-identity`, `expo-sqlite`, SecureStore OAuth tokens, and the
+phase-driven D-pad shell. Copy `apps/tv/.env.example` → `.env` for API
+keys. Expo SDK 57 wants Node 22 (see `.nvmrc`). Assemble needs JDK 17 and
+an Android SDK; hardware OAuth / player verification is Step 5.
 
 `tools/make-banner.py` still regenerates the historical Kotlin TV banner.
 The React Native banner is `apps/tv/assets/tv-banner.png` (320×180),

@@ -1,8 +1,8 @@
 # Step 4 — Controlled Android TV playback
 
 **Parent:** [React Native Five-Step Plan](../REACT_NATIVE_PLAN.md) §4
-**Status:** blocked on Step 2 (`TimerEngine` events) and Step 3 (allowlist
-IDs + playability probe).
+**Status:** unblocked. Steps 2–3 timer, PIN, allowlist, and OAuth are on
+disk.
 **Produces:** Expo native `YoutubePlayerView` (WebViewAssetLoader + IFrame),
 destroy-on-expiry, eight design-brief screens, D-pad behavior. No
 `react-native-webview`, no ExoPlayer, no `expo-av` / `expo-video` YouTube
@@ -183,11 +183,11 @@ Do not strip. Clock runs. Do not promise ad-free.
 
 ### Focus and BACK (YT-D25)
 
-| Phase | Focus |
-|---|---|
+| Phase                                           | Focus                                                                                              |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Setup / picker / settings / confirmation / rest | RN `Pressable` / `TVFocusGuideView`. One primary. Immediate. `hasTVPreferredFocus` on the primary. |
-| `Playing` | Native WebView has focus (YouTube controls). Pill `focusable={false}`. |
-| Transition to rest | After destroy, preferred focus on the rest root. |
+| `Playing`                                       | Native WebView has focus (YouTube controls). Pill `focusable={false}`.                             |
+| Transition to rest                              | After destroy, preferred focus on the rest root.                                                   |
 
 `BackHandler`:
 
@@ -220,11 +220,11 @@ pause/seek/skip on top of the iframe.
 
 Port 04, plus:
 
-| Failure | Response |
-|---|---|
-| Fabric view fails to create WebView | Step 5 platform blocker. Stop. No `expo-video` fallback |
-| Fast Refresh remounts the view mid-play | Native `onDropViewInstance` destroys; JS must not auto-`loadVideo` unless still `Playing` after tick |
-| `react-native-webview` added as a “temporary” player | Fail the Step 5 grep gate |
+| Failure                                              | Response                                                                                             |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Fabric view fails to create WebView                  | Step 5 platform blocker. Stop. No `expo-video` fallback                                              |
+| Fast Refresh remounts the view mid-play              | Native `onDropViewInstance` destroys; JS must not auto-`loadVideo` unless still `Playing` after tick |
+| `react-native-webview` added as a “temporary” player | Fail the Step 5 grep gate                                                                            |
 
 ---
 
@@ -236,12 +236,12 @@ Port 04, plus:
 
 ## Decisions this step must lock
 
-| ID | Decision | Lock |
-|---|---|---|
+| ID         | Decision         | Lock                                                                                                                       |
+| ---------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | **RN-D20** | Player component | Expo native view `YoutubePlayerView`. Forbidden: `react-native-webview`, `expo-web-browser`, `Linking.openURL` to YouTube. |
-| **RN-D21** | Mount rule | `{phase === 'Playing' && attached && <YoutubePlayerView />}` — not `display: 'none'`, not `opacity: 0`. |
-| **RN-D22** | Generation | Native increments; events echo it; JS drops mismatch. |
-| **RN-D23** | HTML asset | One `youtube_player.html` in the native module assets; CNG must keep it. |
+| **RN-D21** | Mount rule       | `{phase === 'Playing' && attached && <YoutubePlayerView />}` — not `display: 'none'`, not `opacity: 0`.                    |
+| **RN-D22** | Generation       | Native increments; events echo it; JS drops mismatch.                                                                      |
+| **RN-D23** | HTML asset       | One `youtube_player.html` in the native module assets; CNG must keep it.                                                   |
 
 ---
 
@@ -258,11 +258,11 @@ download cache, CRT shaders, MediaSession.
 
 ## What this step retires or amends
 
-| Item | Action |
-|---|---|
-| Kotlin `PlayerSession` | Not built; JS+native equivalent |
+| Item                        | Action                           |
+| --------------------------- | -------------------------------- |
+| Kotlin `PlayerSession`      | Not built; JS+native equivalent  |
 | Compose `AndroidView` notes | Replaced by RN mount rule RN-D21 |
-| Channel bug / digit tune | Stay gone |
+| Channel bug / digit tune    | Stay gone                        |
 
 ---
 
@@ -307,10 +307,10 @@ script runs on D6.
 
 ## Open risks
 
-| Risk | Mitigation |
-|---|---|
-| Android TV WebView cannot decode the IFrame | Step 5 platform blocker. Halt. No fallback player |
-| Fabric view focus vs YouTube iframe | Native `requestFocus` on WebView when Playing; rest `hasTVPreferredFocus` after destroy |
-| CNG `--clean` drops module assets | Module owns the HTML; document in the local plugin |
-| YouTube changes IFrame API | Origin triage then blocker; do not extract streams |
-| Ads burn watch time | Documented; clock is honest |
+| Risk                                        | Mitigation                                                                              |
+| ------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Android TV WebView cannot decode the IFrame | Step 5 platform blocker. Halt. No fallback player                                       |
+| Fabric view focus vs YouTube iframe         | Native `requestFocus` on WebView when Playing; rest `hasTVPreferredFocus` after destroy |
+| CNG `--clean` drops module assets           | Module owns the HTML; document in the local plugin                                      |
+| YouTube changes IFrame API                  | Origin triage then blocker; do not extract streams                                      |
+| Ads burn watch time                         | Documented; clock is honest                                                             |

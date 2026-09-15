@@ -10,15 +10,19 @@
     "src"
   ],
   "scripts": {
-    "test": "vitest run && depcruise \"src/**/*.ts\" --config .dependency-cruiser.cjs",
+    "test": "vitest run --coverage && depcruise \"src/**/*.ts\" --config .dependency-cruiser.cjs",
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.4",
     "dependency-cruiser": "^16.10.4",
     "typescript": "~5.9.3",
     "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.4.0"
   }
 }

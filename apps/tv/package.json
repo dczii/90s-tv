@@ -8,20 +8,30 @@
     "android": "EXPO_TV=1 expo run:android",
     "prebuild:tv": "EXPO_TV=1 expo prebuild --platform android --clean",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@nostalgiabox/core": "workspace:*",
+    "android-identity": "file:./modules/android-identity",
+    "device-time": "file:./modules/device-time",
     "expo": "~57.0.13",
     "expo-build-properties": "~1.0.10",
+    "expo-constants": "~57.0.18",
+    "expo-secure-store": "~15.0.8",
     "expo-splash-screen": "~57.0.6",
+    "expo-sqlite": "~57.0.3",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
-    "react-native": "npm:react-native-tvos@0.86-stable"
+    "react-native": "npm:react-native-tvos@0.86-stable",
+    "react-native-qrcode-svg": "^6.3.15",
+    "react-native-svg": "15.12.1"
   },
   "devDependencies": {
     "@react-native-tvos/config-tv": "^0.1.6",
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
+    "dotenv": "^16.6.1",
+    "typescript": "~6.0.3",
+    "vitest": "^3.2.4"
   }
 }
