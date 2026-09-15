@@ -27,6 +27,8 @@ type Props = {
   onCancel?: () => void;
   /** When true, offer disconnect if already signed in */
   allowDisconnect?: boolean;
+  /** Fired after disconnect so session.signedIn stays accurate */
+  onAuthChanged?: () => void;
 };
 
 export function ConnectYouTubeScreen({
@@ -34,6 +36,7 @@ export function ConnectYouTubeScreen({
   onUseLinksInstead,
   onCancel,
   allowDisconnect,
+  onAuthChanged,
 }: Props) {
   const [code, setCode] = useState<DeviceCodeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +128,7 @@ export function ConnectYouTubeScreen({
     await clearTokens();
     setSignedIn(false);
     setCode(null);
+    onAuthChanged?.();
     void startFlow();
   }
 

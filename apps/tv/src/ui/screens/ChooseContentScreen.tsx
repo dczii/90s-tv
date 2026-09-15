@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import {
   CATALOG_TTL_MS,
+  classifyVideoProbe,
   parseYoutubeUrl,
   type AllowlistEntry,
 } from "@nostalgiabox/core";
@@ -23,12 +24,18 @@ import {
   listMySubscriptions,
   youtubeConfig,
   type CatalogItem,
+  type YoutubeRequestOpts,
 } from "../../youtube/client";
-import { loadTokens, saveTokens } from "../../secure/tokenStore";
 import {
-  refreshAccessToken,
-  type YoutubeOAuthConfig,
-} from "../../youtube/deviceCodeAuth";
+  ensureAccessToken,
+  refreshAccessTokenOnce,
+} from "../../youtube/authSession";
+import {
+  messageForAllowlistError,
+  messageForApiError,
+  messageForAuthKind,
+  PARENT_COPY,
+} from "../../youtube/errors";
 
 type Tab = "playlists" | "subscriptions" | "manual";
 
@@ -36,30 +43,16 @@ type Props = {
   allowlist: AllowlistRepository;
   onSaved: (entries: AllowlistEntry[]) => void;
   onBack?: () => void;
+  /** Fired when SecureStore sign-in state may have changed (e.g. AuthRevoked). */
+  onAuthChanged?: () => void;
 };
 
-async function authedAccessToken(
-  config: YoutubeOAuthConfig,
-): Promise<string | null> {
-  const tokens = await loadTokens();
-  if (!tokens) return null;
-  if (tokens.accessExpiryWallMs > Date.now() + 60_000) {
-    return tokens.accessToken;
-  }
-  const refreshed = await refreshAccessToken(config, tokens.refreshToken);
-  if ("kind" in refreshed) {
-    return null;
-  }
-  await saveTokens({
-    accessToken: refreshed.accessToken,
-    refreshToken: tokens.refreshToken,
-    accessExpiryWallMs: Date.now() + refreshed.expiresIn * 1000,
-    tokenType: refreshed.tokenType,
-  });
-  return refreshed.accessToken;
-}
-
-export function ChooseContentScreen({ allowlist, onSaved, onBack }: Props) {
+export function ChooseContentScreen({
+  allowlist,
+  onSaved,
+  onBack,
+  onAuthChanged,
+}: Props) {
   const [tab, setTab] = useState<Tab>("manual");
   const [selected, setSelected] = useState<Map<string, AllowlistEntry>>(
     () => new Map(allowlist.list().map((e) => [e.id, e])),
@@ -67,19 +60,49 @@ export function ChooseContentScreen({ allowlist, onSaved, onBack }: Props) {
   const [playlists, setPlaylists] = useState<CatalogItem[]>([]);
   const [subs, setSubs] = useState<CatalogItem[]>([]);
   const [status, setStatus] = useState<string | null>(null);
+  const [canRetry, setCanRetry] = useState(false);
   const [manualUrl, setManualUrl] = useState("");
   const [signedIn, setSignedIn] = useState(false);
 
   const selectedCount = selected.size;
 
-  const loadCatalogs = useCallback(async () => {
+  const authRetryOpts = useCallback((): YoutubeRequestOpts => {
     const config = youtubeConfig();
-    const token = await authedAccessToken(config);
-    setSignedIn(Boolean(token));
-    if (!token) {
-      setTab("manual");
+    return {
+      refreshAccessTokenOnce: async () => {
+        const token = await refreshAccessTokenOnce(config);
+        if (!token) onAuthChanged?.();
+        return token;
+      },
+    };
+  }, [onAuthChanged]);
+
+  const loadCatalogs = useCallback(async () => {
+    setCanRetry(false);
+    const config = youtubeConfig();
+    let access;
+    try {
+      access = await ensureAccessToken(config);
+    } catch {
+      setStatus(PARENT_COPY.NetworkDown);
+      setCanRetry(true);
       return;
     }
+    if (access.status !== "ok") {
+      setSignedIn(false);
+      setTab("manual");
+      if (access.status === "error") {
+        setStatus(messageForAuthKind(access.error.kind));
+        if (access.error.kind === "NetworkDown") {
+          setCanRetry(true);
+        } else {
+          onAuthChanged?.();
+        }
+      }
+      return;
+    }
+    setSignedIn(true);
+    const token = access.accessToken;
     const now = Date.now();
     const cachedPl = allowlist.getCatalog("playlists");
     if (cachedPl && now - cachedPl.fetchedAtWallMs < CATALOG_TTL_MS) {
@@ -90,22 +113,33 @@ export function ChooseContentScreen({ allowlist, onSaved, onBack }: Props) {
       setSubs(JSON.parse(cachedSub.payloadJson) as CatalogItem[]);
     }
 
-    const pl = await listMyPlaylists(token, config.apiKey);
+    const opts = authRetryOpts();
+    const pl = await listMyPlaylists(token, config.apiKey, opts);
     if (!("kind" in pl)) {
       setPlaylists(pl);
       allowlist.setCatalog("playlists", JSON.stringify(pl), now);
-    } else if (pl.kind === "QuotaExceeded") {
-      setStatus(pl.message);
+    } else {
+      setStatus(messageForApiError(pl));
+      if (pl.kind === "NetworkDown") setCanRetry(true);
+      if (pl.kind === "AuthExpired" || pl.kind === "AuthRevoked") {
+        setSignedIn(false);
+        onAuthChanged?.();
+      }
     }
 
-    const su = await listMySubscriptions(token, config.apiKey);
+    const su = await listMySubscriptions(token, config.apiKey, opts);
     if (!("kind" in su)) {
       setSubs(su);
       allowlist.setCatalog("subscriptions", JSON.stringify(su), now);
-    } else if (su.kind === "QuotaExceeded") {
-      setStatus(su.message);
+    } else {
+      setStatus(messageForApiError(su));
+      if (su.kind === "NetworkDown") setCanRetry(true);
+      if (su.kind === "AuthExpired" || su.kind === "AuthRevoked") {
+        setSignedIn(false);
+        onAuthChanged?.();
+      }
     }
-  }, [allowlist]);
+  }, [allowlist, authRetryOpts, onAuthChanged]);
 
   useEffect(() => {
     void loadCatalogs();
@@ -135,80 +169,116 @@ export function ChooseContentScreen({ allowlist, onSaved, onBack }: Props) {
 
   async function addManual() {
     setStatus(null);
+    setCanRetry(false);
     const parsed = parseYoutubeUrl(manualUrl);
     if (!parsed.ok) {
-      setStatus(
-        parsed.error.kind === "UnsupportedHost"
-          ? "That YouTube link type is not supported. Use a video or playlist URL."
-          : "That does not look like a YouTube URL.",
-      );
+      setStatus(messageForAllowlistError(parsed.error));
       return;
     }
     const config = youtubeConfig();
-    const token = await authedAccessToken(config);
-    const auth = token
-      ? ({ type: "bearer" as const, accessToken: token })
-      : ({ type: "apiKey" as const });
+    const access = await ensureAccessToken(config);
+    if (access.status === "error") {
+      setStatus(messageForAuthKind(access.error.kind));
+      if (access.error.kind === "NetworkDown") {
+        setCanRetry(true);
+      } else {
+        setSignedIn(false);
+        onAuthChanged?.();
+      }
+      // Manual path still works with API key when signed out / soft network
+      // on refresh — only hard-stop if we have no api key path below.
+    }
+    const auth =
+      access.status === "ok"
+        ? ({ type: "bearer" as const, accessToken: access.accessToken })
+        : ({ type: "apiKey" as const });
+    const opts = authRetryOpts();
 
-    if (parsed.value.kind === "Video") {
-      const meta = await fetchVideoMetadata(
-        [parsed.value.id],
-        auth,
-        config.apiKey,
-      );
-      if ("kind" in meta) {
-        setStatus(meta.message);
-        return;
-      }
-      const v = meta[0];
-      if (!v || v.missing) {
-        setStatus("That video is no longer available.");
-        return;
-      }
-      setSelected((prev) => {
-        const next = new Map(prev);
-        next.set(v.id, {
-          id: v.id,
-          kind: "Video",
+    try {
+      if (parsed.value.kind === "Video") {
+        const meta = await fetchVideoMetadata(
+          [parsed.value.id],
+          auth,
+          config.apiKey,
+          opts,
+        );
+        if ("kind" in meta) {
+          setStatus(messageForApiError(meta));
+          if (meta.kind === "NetworkDown") setCanRetry(true);
+          return;
+        }
+        const v = meta[0];
+        if (!v) {
+          setStatus(PARENT_COPY.Removed);
+          return;
+        }
+        const outcome = classifyVideoProbe({
+          videoId: v.id,
           title: v.title,
           thumbnailUrl: v.thumbnailUrl,
           embeddable: v.embeddable,
-          source: "ManualUrl",
-          addedAtWallMs: Date.now(),
-          lastProbedWallMs: Date.now(),
+          privacyStatus: v.privacyStatus,
+          ytAgeRestricted: v.ytAgeRestricted,
+          regionBlocked: v.regionBlocked,
+          missing: v.missing,
         });
-        return next;
-      });
-    } else {
-      const meta = await fetchPlaylistMetadata(
-        parsed.value.id,
-        auth,
-        config.apiKey,
-      );
-      if (meta && "kind" in meta) {
-        setStatus(meta.message);
-        return;
-      }
-      if (!meta) {
-        setStatus("That playlist is no longer available.");
-        return;
-      }
-      setSelected((prev) => {
-        const next = new Map(prev);
-        next.set(meta.id, {
-          id: meta.id,
-          kind: "Playlist",
-          title: meta.title,
-          thumbnailUrl: meta.thumbnailUrl,
-          embeddable: null,
-          source: "ManualUrl",
-          addedAtWallMs: Date.now(),
-          lastProbedWallMs: null,
+        // Keep the row even for definitive skips (YT-03); surface copy now.
+        if (outcome.kind === "definitive") {
+          setStatus(messageForAllowlistError(outcome.error));
+          if (outcome.error.kind === "Removed") {
+            return;
+          }
+        }
+        setSelected((prev) => {
+          const next = new Map(prev);
+          next.set(v.id, {
+            id: v.id,
+            kind: "Video",
+            title: v.title || v.id,
+            thumbnailUrl: v.thumbnailUrl,
+            embeddable: v.embeddable,
+            source: "ManualUrl",
+            addedAtWallMs: Date.now(),
+            lastProbedWallMs: Date.now(),
+          });
+          return next;
         });
-        return next;
-      });
+      } else {
+        const meta = await fetchPlaylistMetadata(
+          parsed.value.id,
+          auth,
+          config.apiKey,
+          opts,
+        );
+        if (meta && "kind" in meta) {
+          setStatus(messageForApiError(meta));
+          if (meta.kind === "NetworkDown") setCanRetry(true);
+          return;
+        }
+        if (!meta) {
+          setStatus(PARENT_COPY.Removed);
+          return;
+        }
+        setSelected((prev) => {
+          const next = new Map(prev);
+          next.set(meta.id, {
+            id: meta.id,
+            kind: "Playlist",
+            title: meta.title,
+            thumbnailUrl: meta.thumbnailUrl,
+            embeddable: null,
+            source: "ManualUrl",
+            addedAtWallMs: Date.now(),
+            lastProbedWallMs: null,
+          });
+          return next;
+        });
+      }
+      setManualUrl("");
+    } catch {
+      setStatus(PARENT_COPY.NetworkDown);
+      setCanRetry(true);
     }
-    setManualUrl("");
   }
 
   const rows = useMemo(() => {
@@ -294,7 +364,12 @@ export function ChooseContentScreen({ allowlist, onSaved, onBack }: Props) {
                 <Pressable
                   key={item.id}
                   onPress={() =>
-                    toggleCatalogItem(item as CatalogItem, tab !== "playlists" ? tab === "subscriptions" : true)
+                    toggleCatalogItem(
+                      item as CatalogItem,
+                      tab !== "playlists"
+                        ? tab === "subscriptions"
+                        : true,
+                    )
                   }
                   style={({ focused }) => [styles.row, focused && styles.focused]}
                 >
@@ -311,6 +386,15 @@ export function ChooseContentScreen({ allowlist, onSaved, onBack }: Props) {
       </ScrollView>
       <Text style={styles.count}>{selectedCount} selected</Text>
       {status ? <Text style={styles.error}>{status}</Text> : null}
+      {canRetry ? (
+        <TvButton
+          label="Retry"
+          variant="secondary"
+          onPress={() => {
+            void loadCatalogs();
+          }}
+        />
+      ) : null}
       <TvButton
         label="Save allowed content"
         onPress={() => {

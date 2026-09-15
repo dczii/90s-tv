@@ -3,6 +3,7 @@ import {
   signingCertSha1Hex,
 } from "android-identity";
 import Constants from "expo-constants";
+import { PARENT_COPY } from "./errors";
 
 export type YoutubeConfig = {
   apiKey: string;
@@ -24,6 +25,7 @@ export type YoutubeApiError =
   | { kind: "QuotaExceeded"; message: string }
   | { kind: "AuthExpired"; message: string }
   | { kind: "AuthRevoked"; message: string }
+  | { kind: "NetworkDown"; message: string }
   | { kind: "HttpError"; status: number; message: string }
   | { kind: "ConfigMissing"; message: string };
 
@@ -46,9 +48,18 @@ export type VideoMetadata = {
   missing: boolean;
 };
 
-type AuthMode =
+export type AuthMode =
   | { type: "apiKey" }
   | { type: "bearer"; accessToken: string };
+
+export type YoutubeRequestOpts = {
+  fetchImpl?: typeof fetch;
+  /**
+   * Bearer 401: return a fresh access token to retry once, or null to stop.
+   * Must not recurse (caller clears / refreshes once).
+   */
+  refreshAccessTokenOnce?: () => Promise<string | null>;
+};
 
 function apiBase(path: string, query: Record<string, string>): string {
   const u = new URL(`https://www.googleapis.com/youtube/v3/${path}`);
@@ -61,8 +72,10 @@ async function youtubeFetch(
   query: Record<string, string>,
   auth: AuthMode,
   apiKey: string,
-  fetchImpl: typeof fetch = fetch,
+  opts: YoutubeRequestOpts = {},
+  allowRetry = true,
 ): Promise<Response | YoutubeApiError> {
+  const fetchImpl = opts.fetchImpl ?? fetch;
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
@@ -73,7 +86,7 @@ async function youtubeFetch(
     if (!apiKey) {
       return {
         kind: "ConfigMissing",
-        message: "YOUTUBE_API_KEY is not configured",
+        message: PARENT_COPY.ConfigMissing,
       };
     }
     q.key = apiKey;
@@ -84,9 +97,33 @@ async function youtubeFetch(
       // Dev / Node tests: headers optional; restricted keys need them on device
     }
   }
-  const res = await fetchImpl(apiBase(path, q), { headers });
+
+  let res: Response;
+  try {
+    res = await fetchImpl(apiBase(path, q), { headers });
+  } catch {
+    return { kind: "NetworkDown", message: PARENT_COPY.NetworkDown };
+  }
+
   if (res.status === 401) {
-    return { kind: "AuthExpired", message: "YouTube API 401" };
+    if (
+      allowRetry &&
+      auth.type === "bearer" &&
+      opts.refreshAccessTokenOnce
+    ) {
+      const next = await opts.refreshAccessTokenOnce();
+      if (next) {
+        return youtubeFetch(
+          path,
+          query,
+          { type: "bearer", accessToken: next },
+          apiKey,
+          opts,
+          false,
+        );
+      }
+    }
+    return { kind: "AuthExpired", message: PARENT_COPY.AuthExpired };
   }
   if (res.status === 403) {
     const body = (await res.json().catch(() => ({}))) as {
@@ -96,20 +133,20 @@ async function youtubeFetch(
     if (reason === "quotaExceeded" || reason === "dailyLimitExceeded") {
       return {
         kind: "QuotaExceeded",
-        message: body.error?.message ?? "YouTube quota exceeded",
+        message: PARENT_COPY.QuotaExceeded,
       };
     }
     return {
       kind: "HttpError",
       status: 403,
-      message: body.error?.message ?? "YouTube API 403",
+      message: PARENT_COPY.HttpError,
     };
   }
   if (!res.ok) {
     return {
       kind: "HttpError",
       status: res.status,
-      message: `YouTube API ${res.status}`,
+      message: PARENT_COPY.HttpError,
     };
   }
   return res;
@@ -130,17 +167,17 @@ function thumbFromSnippet(snippet: Record<string, unknown>): string | null {
 export async function listMyPlaylists(
   accessToken: string,
   apiKey: string,
-  fetchImpl: typeof fetch = fetch,
+  opts: YoutubeRequestOpts = {},
 ): Promise<CatalogItem[] | YoutubeApiError> {
   const res = await youtubeFetch(
     "playlists",
     { part: "snippet,contentDetails", mine: "true", maxResults: "50" },
     { type: "bearer", accessToken },
     apiKey,
-    fetchImpl,
+    opts,
   );
   if (!(res instanceof Response)) return res;
-  const json = (await res.json()) as {
+  const json = (await res.json().catch(() => ({}))) as {
     items?: Array<{ id?: string; snippet?: Record<string, unknown> }>;
   };
   return (json.items ?? []).map((item) => ({
@@ -153,17 +190,17 @@ export async function listMyPlaylists(
 export async function listMySubscriptions(
   accessToken: string,
   apiKey: string,
-  fetchImpl: typeof fetch = fetch,
+  opts: YoutubeRequestOpts = {},
 ): Promise<CatalogItem[] | YoutubeApiError> {
   const res = await youtubeFetch(
     "subscriptions",
     { part: "snippet", mine: "true", maxResults: "50" },
     { type: "bearer", accessToken },
     apiKey,
-    fetchImpl,
+    opts,
   );
   if (!(res instanceof Response)) return res;
-  const json = (await res.json()) as {
+  const json = (await res.json().catch(() => ({}))) as {
     items?: Array<{
       snippet?: {
         title?: string;
@@ -181,7 +218,7 @@ export async function listMySubscriptions(
       channelId,
       { type: "bearer", accessToken },
       apiKey,
-      fetchImpl,
+      opts,
     );
     if (typeof uploads === "string") {
       out.push({
@@ -191,8 +228,11 @@ export async function listMySubscriptions(
         uploadsPlaylistId: uploads,
       });
     } else if (uploads && typeof uploads === "object" && "kind" in uploads) {
-      // Propagate first hard API error (quota / auth)
-      if (uploads.kind === "QuotaExceeded" || uploads.kind === "AuthExpired") {
+      if (
+        uploads.kind === "QuotaExceeded" ||
+        uploads.kind === "AuthExpired" ||
+        uploads.kind === "NetworkDown"
+      ) {
         return uploads;
       }
     }
@@ -204,17 +244,17 @@ async function channelUploadsPlaylist(
   channelId: string,
   auth: AuthMode,
   apiKey: string,
-  fetchImpl: typeof fetch,
+  opts: YoutubeRequestOpts,
 ): Promise<string | YoutubeApiError | null> {
   const res = await youtubeFetch(
     "channels",
     { part: "contentDetails", id: channelId },
     auth,
     apiKey,
-    fetchImpl,
+    opts,
   );
   if (!(res instanceof Response)) return res;
-  const json = (await res.json()) as {
+  const json = (await res.json().catch(() => ({}))) as {
     items?: Array<{
       contentDetails?: { relatedPlaylists?: { uploads?: string } };
     }>;
@@ -226,7 +266,7 @@ export async function fetchVideoMetadata(
   ids: string[],
   auth: AuthMode,
   apiKey: string,
-  fetchImpl: typeof fetch = fetch,
+  opts: YoutubeRequestOpts = {},
 ): Promise<VideoMetadata[] | YoutubeApiError> {
   if (ids.length === 0) return [];
   const res = await youtubeFetch(
@@ -237,10 +277,10 @@ export async function fetchVideoMetadata(
     },
     auth,
     apiKey,
-    fetchImpl,
+    opts,
   );
   if (!(res instanceof Response)) return res;
-  const json = (await res.json()) as {
+  const json = (await res.json().catch(() => ({}))) as {
     items?: Array<{
       id?: string;
       snippet?: Record<string, unknown>;
@@ -290,17 +330,17 @@ export async function fetchPlaylistMetadata(
   playlistId: string,
   auth: AuthMode,
   apiKey: string,
-  fetchImpl: typeof fetch = fetch,
+  opts: YoutubeRequestOpts = {},
 ): Promise<CatalogItem | YoutubeApiError | null> {
   const res = await youtubeFetch(
     "playlists",
     { part: "snippet", id: playlistId },
     auth,
     apiKey,
-    fetchImpl,
+    opts,
   );
   if (!(res instanceof Response)) return res;
-  const json = (await res.json()) as {
+  const json = (await res.json().catch(() => ({}))) as {
     items?: Array<{ id?: string; snippet?: Record<string, unknown> }>;
   };
   const item = json.items?.[0];
@@ -311,5 +351,3 @@ export async function fetchPlaylistMetadata(
     thumbnailUrl: item.snippet ? thumbFromSnippet(item.snippet) : null,
   };
 }
-
-export type { AuthMode };

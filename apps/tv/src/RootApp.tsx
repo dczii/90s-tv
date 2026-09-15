@@ -74,6 +74,9 @@ export default function RootApp() {
         <StatusBar hidden />
         <ConnectYouTubeScreen
           allowDisconnect={session.contentRoute === "connect"}
+          onAuthChanged={() => {
+            void session.refreshSignedIn();
+          }}
           onConnected={() => {
             void session.refreshSignedIn();
             if (session.wizardStep === "connect") {
@@ -106,6 +109,9 @@ export default function RootApp() {
         <ChooseContentScreen
           allowlist={session.allowlistRepo}
           onSaved={session.onAllowlistSaved}
+          onAuthChanged={() => {
+            void session.refreshSignedIn();
+          }}
           onBack={
             session.contentRoute === "choose"
               ? session.closeContent

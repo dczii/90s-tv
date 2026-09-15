@@ -5,7 +5,8 @@ export type AuthErrorKind =
   | "AuthExpired"
   | "AuthCancelled"
   | "AuthConfigMissing"
-  | "AuthSecureStoreUnavailable";
+  | "AuthSecureStoreUnavailable"
+  | "NetworkDown";
 
 export type AuthError = { kind: AuthErrorKind; message: string };
 
@@ -35,6 +36,17 @@ const DEVICE_CODE_URL = "https://oauth2.googleapis.com/device/code";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 
+/** Local copies so this module stays free of circular imports with errors.ts */
+const COPY = {
+  AuthConfigMissing: "YouTube is not configured on this device.",
+  AuthDeviceCodeExpired: "The code expired. Generate a new one.",
+  AuthDenied: "You cancelled on Google.",
+  AuthRevoked: "Google revoked access. Connect again.",
+  AuthExpired: "YouTube sign-in expired. Connect again from Parent settings.",
+  NetworkDown:
+    "Network unavailable. Showing saved content if any — try again when online.",
+} as const;
+
 export type YoutubeOAuthConfig = {
   clientId: string;
   clientSecret: string;
@@ -49,25 +61,30 @@ export async function requestDeviceCode(
   if (!config.clientId) {
     return {
       kind: "AuthConfigMissing",
-      message: "YOUTUBE_CLIENT_ID is not configured",
+      message: COPY.AuthConfigMissing,
     };
   }
   const body = new URLSearchParams({
     client_id: config.clientId,
     scope: SCOPE,
   });
-  const res = await fetchImpl(DEVICE_CODE_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  let res: Response;
+  try {
+    res = await fetchImpl(DEVICE_CODE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+  } catch {
+    return { kind: "NetworkDown", message: COPY.NetworkDown };
+  }
   if (!res.ok) {
     return {
       kind: "AuthConfigMissing",
-      message: `device/code HTTP ${res.status}`,
+      message: COPY.AuthConfigMissing,
     };
   }
-  const json = (await res.json()) as Record<string, unknown>;
+  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   return {
     deviceCode: String(json.device_code),
     userCode: String(json.user_code),
@@ -93,12 +110,20 @@ export async function pollDeviceToken(
     device_code: deviceCode,
     grant_type: "urn:ietf:params:oauth:grant-type:device_code",
   });
-  const res = await fetchImpl(TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  const json = (await res.json()) as Record<string, unknown>;
+  let res: Response;
+  try {
+    res = await fetchImpl(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+  } catch {
+    return {
+      status: "error",
+      error: { kind: "NetworkDown", message: COPY.NetworkDown },
+    };
+  }
+  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (res.ok && json.access_token) {
     return {
       status: "success",
@@ -118,7 +143,7 @@ export async function pollDeviceToken(
       status: "error",
       error: {
         kind: "AuthDeviceCodeExpired",
-        message: "The code expired. Generate a new one.",
+        message: COPY.AuthDeviceCodeExpired,
       },
     };
   }
@@ -127,7 +152,7 @@ export async function pollDeviceToken(
       status: "error",
       error: {
         kind: "AuthDenied",
-        message: "You cancelled on Google",
+        message: COPY.AuthDenied,
       },
     };
   }
@@ -136,7 +161,7 @@ export async function pollDeviceToken(
       status: "error",
       error: {
         kind: "AuthRevoked",
-        message: "Google revoked access. Connect again.",
+        message: COPY.AuthRevoked,
       },
     };
   }
@@ -144,7 +169,7 @@ export async function pollDeviceToken(
     status: "error",
     error: {
       kind: "AuthExpired",
-      message: err || `token HTTP ${res.status}`,
+      message: COPY.AuthExpired,
     },
   };
 }
@@ -160,16 +185,23 @@ export async function refreshAccessToken(
     refresh_token: refreshToken,
     grant_type: "refresh_token",
   });
-  const res = await fetchImpl(TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  const json = (await res.json()) as Record<string, unknown>;
+  let res: Response;
+  try {
+    res = await fetchImpl(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+  } catch {
+    return { kind: "NetworkDown", message: COPY.NetworkDown };
+  }
+  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok || !json.access_token) {
+    const kind =
+      res.status === 400 || res.status === 403 ? "AuthRevoked" : "AuthExpired";
     return {
-      kind: res.status === 400 || res.status === 403 ? "AuthRevoked" : "AuthExpired",
-      message: String(json.error ?? `refresh HTTP ${res.status}`),
+      kind,
+      message: kind === "AuthRevoked" ? COPY.AuthRevoked : COPY.AuthExpired,
     };
   }
   return {
