@@ -1,35 +1,10 @@
 import {
-  emptyLockout,
   freshPersistedTimer,
   type PersistedTimer,
-  type PinLockout,
-  type PinRecord,
   type TimerPhase,
   type TimerPolicy,
 } from "@littleplay/core";
 import { KV_KEYS, type SqliteKv } from "./sqliteKv";
-
-function encodeBytes(bytes: Uint8Array): string {
-  let s = "";
-  for (let i = 0; i < bytes.length; i++) {
-    s += String.fromCharCode(bytes[i]!);
-  }
-  // btoa is available in RN / Hermes; Node tests polyfill via Buffer.
-  if (typeof btoa === "function") {
-    return btoa(s);
-  }
-  return Buffer.from(bytes).toString("base64");
-}
-
-function decodeBytes(b64: string): Uint8Array {
-  if (typeof atob === "function") {
-    const bin = atob(b64);
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
-  }
-  return new Uint8Array(Buffer.from(b64, "base64"));
-}
 
 function readNumber(map: Map<string, string>, key: string): number | null {
   const raw = map.get(key);
@@ -48,18 +23,12 @@ function writeNullable(kv: SqliteKv, key: string, value: number | null): void {
 
 export type LoadedStore = {
   timer: PersistedTimer;
-  pin: PinRecord | null;
-  lockout: PinLockout;
 };
 
 export function loadStore(kv: SqliteKv): LoadedStore {
   const map = kv.getAll();
   if (!map.has(KV_KEYS.phase)) {
-    return {
-      timer: freshPersistedTimer(),
-      pin: null,
-      lockout: emptyLockout(),
-    };
+    return { timer: freshPersistedTimer() };
   }
 
   const phase = (map.get(KV_KEYS.phase) ?? "Setup") as TimerPhase;
@@ -80,26 +49,7 @@ export function loadStore(kv: SqliteKv): LoadedStore {
     deadlineBootCount: readNumber(map, KV_KEYS.deadlineBootCount),
   };
 
-  const saltB64 = map.get(KV_KEYS.pinSalt);
-  const hashB64 = map.get(KV_KEYS.pinHash);
-  const iterations = readNumber(map, KV_KEYS.pinIterations);
-  let pin: PinRecord | null = null;
-  if (saltB64 && hashB64 && iterations != null) {
-    pin = {
-      salt: decodeBytes(saltB64),
-      hash: decodeBytes(hashB64),
-      iterations,
-    };
-  }
-
-  const lockout: PinLockout = {
-    failedAttempts: readNumber(map, KV_KEYS.pinFailedAttempts) ?? 0,
-    lockoutElapsedMs: readNumber(map, KV_KEYS.pinLockoutElapsedMs),
-    lockoutWallMs: readNumber(map, KV_KEYS.pinLockoutWallMs),
-    lockoutBootCount: readNumber(map, KV_KEYS.pinLockoutBootCount),
-  };
-
-  return { timer, pin, lockout };
+  return { timer };
 }
 
 export function saveTimer(kv: SqliteKv, timer: PersistedTimer): void {
@@ -114,20 +64,3 @@ export function saveTimer(kv: SqliteKv, timer: PersistedTimer): void {
   writeNullable(kv, KV_KEYS.phaseStartWallMs, timer.phaseStartWallMs);
   writeNullable(kv, KV_KEYS.deadlineBootCount, timer.deadlineBootCount);
 }
-
-export function savePin(
-  kv: SqliteKv,
-  record: PinRecord,
-  lockout: PinLockout,
-): void {
-  kv.set(KV_KEYS.pinSalt, encodeBytes(record.salt));
-  kv.set(KV_KEYS.pinHash, encodeBytes(record.hash));
-  kv.set(KV_KEYS.pinIterations, String(record.iterations));
-  kv.set(KV_KEYS.pinFailedAttempts, String(lockout.failedAttempts));
-  writeNullable(kv, KV_KEYS.pinLockoutElapsedMs, lockout.lockoutElapsedMs);
-  writeNullable(kv, KV_KEYS.pinLockoutWallMs, lockout.lockoutWallMs);
-  writeNullable(kv, KV_KEYS.pinLockoutBootCount, lockout.lockoutBootCount);
-}
-
-/** Grep guard: never write a raw PIN key. */
-export const FORBIDDEN_PIN_PLAINTEXT_KEY = "pin";

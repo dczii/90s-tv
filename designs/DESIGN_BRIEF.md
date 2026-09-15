@@ -1,4 +1,7 @@
-# LittlePlay — Initial Design Brief
+# LittlePlay — Design Brief
+
+Source of truth: the shipping TV app under `apps/tv`. Frames in
+`designs/littleplay.pen` should match these screens.
 
 ## Format
 
@@ -11,70 +14,76 @@
 ## Direction
 
 The product should feel calm, protective, and trustworthy rather than punitive. Use a
-near-black navy background, warm off-white text, muted slate surfaces, a restrained
-coral accent for primary actions, and amber only for time warnings. Avoid YouTube-red
-branding except where required by YouTube itself.
+near-black navy background (`#0A101C`), warm off-white text (`#F5F2EA`), muted slate
+surfaces (`#121C2B` / `#192638`), a restrained coral accent (`#FF7657`) for primary
+actions, amber (`#F8C65D`) for watch time, and green (`#65D6A6`) for rest. Avoid
+YouTube-red branding except where required by YouTube itself.
 
-Use one strong focal action per screen. Focused controls receive a high-contrast border
-and subtle elevation; do not rely on color alone. Keep timer values visible and plain.
-Remote-driven focus changes should be immediate, without transition delays.
+Use one strong focal action per screen. Focused controls receive a high-contrast coral
+border; do not rely on color alone. Keep timer values visible and plain. Remote-driven
+focus changes are immediate, without transition delays. There is no parent PIN.
 
-## Initial screens
+## Screens
 
-1. **Welcome / Parent setup**
-   - Product name and concise explanation
-   - “Set up with parent PIN” primary action
-   - Small enforcement-limit note
+1. **Welcome**
+   - Brand row (coral mark + LittlePlay)
+   - Headline: “A little TV. Then a real break.”
+   - Subcopy about curated playlists and watch/rest windows
+   - Primary: **Get started**
+   - Enforcement note
+   - Right: preview card with play glyph and `15:00` / WATCH WINDOW
 
 2. **Timer setup**
-   - Watch duration and rest duration steppers
-   - Example defaults: 15 minutes watch, 30 minutes rest
-   - PIN creation and confirmation
-   - “Save and choose videos” primary action
+   - Section: Parent setup
+   - Title: Set a healthy rhythm
+   - Two duration steppers: Watch (amber, default 15) and Break (green, default 30)
+   - Primary: **Save and choose videos**
+   - No PIN
 
-3. **Connect YouTube**
-   - Device-code authorization URL and large code
-   - QR placeholder as a secondary convenience
-   - “Use links instead” secondary action
-   - Read-only permission explanation
+3. **Curated playlists**
+   - Section: Content setup
+   - Catalog copy (Little Bear, Franklin, Bear in the Big Blue House, and more)
+   - Callout: Select one or more playlists
+   - Side art + “N shows in the catalog”
+   - Primary: **Choose playlists**
 
-4. **Choose allowed content**
-   - Tabs for Playlists, Subscriptions, and Manual link
-   - Large poster rows with check states
-   - Persistent selected count
-   - “Save allowed content” primary action
+4. **Choose / manage playlists**
+   - Wizard title: Choose playlists · Settings title: Manage playlists
+   - 3-column catalog cards with 16:9 thumbs, checkmark when selected
+   - First card takes preferred focus (not Save)
+   - Footer: Back, selected count, **Save playlists**
+   - Saving from settings returns to Parent settings
 
 5. **Ready / Continue watching**
-   - Selected content artwork in the background with a dark scrim
-   - “15 minutes available” as the main message
-   - “Continue watching” primary action
-   - No autoplay
+   - “Ready when you are.”
+   - Available minutes card
+   - Primary: **Continue watching** (disabled if no playlists)
+   - Secondary: Parent settings
+   - Right: up-next card with first playlist title
 
 6. **Playback**
-   - Full-bleed 16:9 player placeholder
-   - Minimal remaining-time pill in the upper-right
-   - Brief title/playlist overlay suitable for remote invocation
-   - No app controls layered over required YouTube controls
+   - Full-bleed player
+   - Remaining-time pill, upper-right; amber fill in the last 60 seconds
+   - Optional title overlay, lower-left
+   - Pill is not focusable
 
 7. **Rest timer**
-   - Player completely absent
-   - Large circular countdown and “Time for a break”
-   - Calm explanation of what happens when the timer reaches zero
-   - Parent settings entry kept visually secondary
+   - Title: Time for a break
+   - Green stroke ring that empties with remaining time
+   - Large countdown + BREAK REMAINING
+   - Secondary: Parent settings
 
 8. **Parent settings**
-   - PIN-gated screen
-   - Timer policy summary
-   - Manage allowed content
-   - Connect/disconnect account
-   - Reset current cycle as a deliberate destructive action
+   - No PIN gate
+   - Left: watch/break summary + manage-playlists card
+   - Right: current cycle, **Manage playlists** (preferred focus), Edit timer policy,
+     Reset current cycle, Done
+   - Enforcement note
 
 ## Reusable components
 
 - Primary, secondary, and destructive TV buttons with focused/unfocused states
-- Duration stepper
-- PIN entry cells
+- Duration stepper (amber watch / green break)
+- Content card with selected check
 - Countdown ring
-- Content card with selected state
 - Remaining-time pill
-- TV-safe dialog

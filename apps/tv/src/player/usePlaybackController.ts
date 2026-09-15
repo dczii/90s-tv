@@ -5,7 +5,6 @@ import {
   type TimerPhase,
 } from "@littleplay/core";
 import type { SqliteKv } from "../data/sqliteKv";
-import { ensureAccessToken, refreshAccessTokenOnce } from "../youtube/authSession";
 import { youtubeConfig, type AuthMode } from "../youtube/client";
 import { messageForApiError } from "../youtube/errors";
 import { clearCursor, loadCursor, saveCursor } from "./cursorStore";
@@ -26,28 +25,9 @@ export type PlaybackUi = {
   showInfo: boolean;
 };
 
-async function resolveAuth(): Promise<AuthMode> {
-  const cfg = youtubeConfig();
-  const token = await ensureAccessToken({
-    clientId: cfg.clientId,
-    clientSecret: cfg.clientSecret,
-  });
-  if (token.status === "ok") {
-    return { type: "bearer", accessToken: token.accessToken };
-  }
+/** Catalog-only: expand/probe public playlists with the Data API key. */
+function catalogAuth(): AuthMode {
   return { type: "apiKey" };
-}
-
-function requestOpts(auth: AuthMode) {
-  const cfg = youtubeConfig();
-  if (auth.type !== "bearer") return {};
-  return {
-    refreshAccessTokenOnce: () =>
-      refreshAccessTokenOnce({
-        clientId: cfg.clientId,
-        clientSecret: cfg.clientSecret,
-      }),
-  };
 }
 
 /**
@@ -60,13 +40,12 @@ export function usePlaybackController(opts: {
   entries: AllowlistEntry[];
   player: PlayerSessionApi;
   confirmWatching: () => string | null;
-  onAuthChanged?: () => void;
 }): {
   ui: PlaybackUi;
   continueWatching: () => Promise<void>;
   flashInfo: () => void;
 } {
-  const { phase, kv, entries, player, confirmWatching, onAuthChanged } = opts;
+  const { phase, kv, entries, player, confirmWatching } = opts;
   const [videoId, setVideoId] = useState<string | null>(null);
   const [videoTitle, setVideoTitle] = useState<string | null>(null);
   const [noPlayableSlate, setNoPlayableSlate] = useState(false);
@@ -98,14 +77,14 @@ export function usePlaybackController(opts: {
   const skipToNext = useCallback(async () => {
     if (!kv) return;
     const cfg = youtubeConfig();
-    const auth = await resolveAuth();
+    const auth = catalogAuth();
     const cursor = loadCursor(kv);
     const result = await expandAndPickNext(
       entries,
       cursor,
       auth,
       cfg.apiKey,
-      requestOpts(auth),
+      {},
       true,
     );
     if (result.status !== "ok" || !result.next) {
@@ -155,14 +134,14 @@ export function usePlaybackController(opts: {
     restoredRef.current = true;
     void (async () => {
       const cfg = youtubeConfig();
-      const auth = await resolveAuth();
+      const auth = catalogAuth();
       const cursor = loadCursor(kv);
       const result = await expandAndPickNext(
         entries,
         cursor,
         auth,
         cfg.apiKey,
-        requestOpts(auth),
+        {},
         false,
       );
       if (result.status !== "ok" || !result.next) {
@@ -185,27 +164,22 @@ export function usePlaybackController(opts: {
         return;
       }
       const cfg = youtubeConfig();
-      const auth = await resolveAuth();
-      if (auth.type === "apiKey" && !cfg.apiKey) {
-        // Manual links still need an API key to expand/probe playlists.
+      if (!cfg.apiKey) {
+        setContinueError("YouTube API key is not configured on this device.");
+        return;
       }
+      const auth = catalogAuth();
       const cursor = loadCursor(kv);
       const result = await expandAndPickNext(
         entries,
         cursor,
         auth,
         cfg.apiKey,
-        requestOpts(auth),
+        {},
         false,
       );
       if (result.status === "error") {
         setContinueError(messageForApiError(result.error));
-        if (
-          result.error.kind === "AuthExpired" ||
-          result.error.kind === "AuthRevoked"
-        ) {
-          onAuthChanged?.();
-        }
         return;
       }
       if (!result.next) {
@@ -225,7 +199,7 @@ export function usePlaybackController(opts: {
     } finally {
       setContinueBusy(false);
     }
-  }, [kv, entries, confirmWatching, playCandidate, onAuthChanged]);
+  }, [kv, entries, confirmWatching, playCandidate]);
 
   return {
     ui: {

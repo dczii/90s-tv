@@ -1,105 +1,82 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { DurationStepper } from "../components/DurationStepper";
-import { PinCells } from "../components/PinCells";
 import { TvButton } from "../components/TvButton";
-import { colors, safe } from "../../theme/tokens";
+import { ScreenHeader, ScreenShell } from "../components/ScreenChrome";
+import { colors, useLayout } from "../../theme/tokens";
 
 type Props = {
-  pinPending: boolean;
-  onSave: (watchMin: number, restMin: number, pin: string) => Promise<string | null>;
+  onSave: (watchMin: number, restMin: number) => string | null;
 };
 
-export function TimerSetupScreen({ pinPending, onSave }: Props) {
+export function TimerSetupScreen({ onSave }: Props) {
+  const { s } = useLayout();
   const [watchMin, setWatchMin] = useState(15);
   const [restMin, setRestMin] = useState(30);
-  const [pin, setPin] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function persistPin(pinValue: string) {
-    const err = await onSave(watchMin, restMin, pinValue);
-    if (err) setError(err);
-  }
-
   return (
-    <View style={styles.shell} accessibilityLabel="Timer setup">
-      <Text style={styles.title}>Timer setup</Text>
-      <View style={styles.steppers}>
+    <ScreenShell accessibilityLabel="Timer setup">
+      <ScreenHeader
+        section="Parent setup"
+        title="Set a healthy rhythm"
+        subtitle="Choose how long watching lasts and how long the break should be."
+      />
+      <View style={[styles.steppers, { gap: s(24), marginTop: s(28) }]}>
         <DurationStepper
-          label="Watch"
+          label="Watch time"
+          tone="watch"
           valueMinutes={watchMin}
-          min={5}
+          min={1}
           max={60}
-          dense
+          step={1}
+          focusedCard
           onChange={setWatchMin}
         />
         <DurationStepper
-          label="Rest"
+          label="Break time"
+          tone="break"
           valueMinutes={restMin}
-          min={5}
+          min={1}
           max={180}
-          dense
+          step={1}
           onChange={setRestMin}
         />
       </View>
-      <Text style={styles.sub}>Parent PIN</Text>
-      <View style={styles.pinRegion}>
-        <PinCells
-          disabled={pinPending}
-          dense
-          preferKeypadFocus
-          onComplete={(value) => {
-            setError(null);
-            setPin(value);
-            void persistPin(value);
+      <View style={styles.footer}>
+        {error ? (
+          <Text style={[styles.error, { fontSize: s(18) }]}>{error}</Text>
+        ) : (
+          <View />
+        )}
+        <TvButton
+          label="Save and choose videos"
+          onPress={() => {
+            const err = onSave(watchMin, restMin);
+            if (err) setError(err);
           }}
+          {...({ hasTVPreferredFocus: true } as object)}
         />
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <TvButton
-        label={pinPending ? "Saving…" : "Save and continue"}
-        disabled={pinPending || !pin}
-        onPress={() => {
-          if (pin) void persistPin(pin);
-        }}
-      />
-    </View>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  shell: {
-    flex: 1,
-    backgroundColor: colors.navy,
-    paddingHorizontal: safe.horizontal,
-    paddingVertical: safe.vertical,
-    gap: 10,
-  },
-  title: {
-    color: colors.offWhite,
-    fontSize: 28,
-    fontWeight: "700",
-    flexShrink: 0,
-  },
   steppers: {
     flexDirection: "row",
-    gap: 32,
-    flexShrink: 0,
-    alignItems: "stretch",
-  },
-  sub: {
-    color: colors.offWhite,
-    fontSize: 18,
-    flexShrink: 0,
-  },
-  pinRegion: {
     flex: 1,
+    alignItems: "stretch",
     minHeight: 0,
-    width: "100%",
+    maxHeight: "55%",
   },
-  error: {
-    color: colors.amber,
-    fontSize: 16,
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     flexShrink: 0,
+    marginTop: "auto",
+    paddingTop: 16,
   },
+  error: { color: colors.amber },
 });

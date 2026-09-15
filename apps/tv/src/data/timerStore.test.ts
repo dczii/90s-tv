@@ -1,21 +1,18 @@
 import { createMemorySqlExecutor, SqliteKv } from "./sqliteKv";
-import { loadStore, savePin, saveTimer } from "./timerStore";
+import { loadStore, saveTimer } from "./timerStore";
 import {
   DEFAULT_POLICY,
-  emptyLockout,
   freshPersistedTimer,
-  type PinRecord,
 } from "@littleplay/core";
 import { describe, expect, it } from "vitest";
 
 describe("sqlite kv timer mapping", () => {
-  it("round-trips PersistedTimer and PIN verifier without a pin plaintext key", () => {
+  it("round-trips PersistedTimer without PIN fields", () => {
     const kv = new SqliteKv(createMemorySqlExecutor());
     kv.migrate();
 
     const fresh = loadStore(kv);
     expect(fresh.timer).toEqual(freshPersistedTimer());
-    expect(fresh.pin).toBeNull();
 
     const timer = {
       ...freshPersistedTimer(),
@@ -31,20 +28,10 @@ describe("sqlite kv timer mapping", () => {
     };
     saveTimer(kv, timer);
 
-    const salt = new Uint8Array(16).fill(1);
-    const hash = new Uint8Array(32).fill(2);
-    const record: PinRecord = { salt, hash, iterations: 120_000 };
-    savePin(kv, record, emptyLockout());
-
     const loaded = loadStore(kv);
     expect(loaded.timer).toEqual(timer);
-    expect(loaded.pin?.iterations).toBe(120_000);
-    expect([...loaded.pin!.salt]).toEqual([...salt]);
-    expect([...loaded.pin!.hash]).toEqual([...hash]);
 
     const keys = [...kv.getAll().keys()];
-    expect(keys).not.toContain("pin");
-    expect(keys).toContain("pin_salt");
-    expect(keys).toContain("pin_hash");
+    expect(keys.some((k) => k.startsWith("pin"))).toBe(false);
   });
 });

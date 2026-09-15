@@ -8,6 +8,11 @@ export type PresetItem = {
   thumbnailUrl: string;
   /** Canonical YouTube URL for reference / future refresh. */
   url: string;
+  /**
+   * First playable video ids for catalog mode when Data API expand is
+   * unavailable (restricted API key, offline, etc.).
+   */
+  seedVideoIds: readonly string[];
 };
 
 /**
@@ -23,6 +28,7 @@ export const PRESET_PLAYLISTS: readonly PresetItem[] = [
     description: "Little Bear | All Episodes",
     thumbnailUrl: "https://i.ytimg.com/vi/nCkvQ10y_Zo/hqdefault.jpg",
     url: "https://www.youtube.com/playlist?list=PL74xflqy0ma87hLDtQl06YtQYCm4kcuju",
+    seedVideoIds: ["nCkvQ10y_Zo"],
   },
   {
     id: "PLzzN_Z84FXi-5i6rbGw7Nk82hbC_Y3fxS",
@@ -31,6 +37,7 @@ export const PRESET_PLAYLISTS: readonly PresetItem[] = [
     description: "Shapes, Sounds & Colors with Bear",
     thumbnailUrl: "https://i.ytimg.com/vi/A1SaFUKjnqA/hqdefault.jpg",
     url: "https://www.youtube.com/playlist?list=PLzzN_Z84FXi-5i6rbGw7Nk82hbC_Y3fxS",
+    seedVideoIds: ["A1SaFUKjnqA"],
   },
   {
     id: "PLGbBuikY0YkEF3rxDz6J3RgWMqQ7EekDB",
@@ -39,6 +46,7 @@ export const PRESET_PLAYLISTS: readonly PresetItem[] = [
     description: "Franklin the Turtle — full episodes",
     thumbnailUrl: "https://i.ytimg.com/vi/MXPccUSEHJY/hqdefault.jpg",
     url: "https://www.youtube.com/playlist?list=PLGbBuikY0YkEF3rxDz6J3RgWMqQ7EekDB",
+    seedVideoIds: ["MXPccUSEHJY"],
   },
   {
     id: "PLdkj6XH8GYPTnhk-3uYtUYvoDbAt9TGCy",
@@ -47,6 +55,7 @@ export const PRESET_PLAYLISTS: readonly PresetItem[] = [
     description: "Noodle & Pals alphabet songs",
     thumbnailUrl: "https://i.ytimg.com/vi/Wk3K9PLtNUQ/hqdefault.jpg",
     url: "https://www.youtube.com/playlist?list=PLdkj6XH8GYPTnhk-3uYtUYvoDbAt9TGCy",
+    seedVideoIds: ["Wk3K9PLtNUQ"],
   },
   {
     id: "5gZOYKHXwyQ",
@@ -55,5 +64,10 @@ export const PRESET_PLAYLISTS: readonly PresetItem[] = [
     description: "Itsy Bitsy Spider + more kids songs",
     thumbnailUrl: "https://i.ytimg.com/vi/5gZOYKHXwyQ/hqdefault.jpg",
     url: "https://www.youtube.com/watch?v=5gZOYKHXwyQ",
+    seedVideoIds: ["5gZOYKHXwyQ"],
   },
 ];
+
+export function seedVideoIdsFor(entryId: string): readonly string[] {
+  return PRESET_PLAYLISTS.find((p) => p.id === entryId)?.seedVideoIds ?? [];
+}

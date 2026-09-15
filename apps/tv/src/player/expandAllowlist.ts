@@ -6,6 +6,7 @@ import {
   type ExpandedVideoId,
   type VideoProbe,
 } from "@littleplay/core";
+import { seedVideoIdsFor } from "../content/presetPlaylists";
 import {
   fetchVideoMetadata,
   listPlaylistVideoIds,
@@ -23,9 +24,20 @@ export type ExpandResult =
     }
   | { status: "error"; error: YoutubeApiError };
 
+function pushSeeds(
+  expanded: ExpandedVideoId[],
+  entryId: string,
+  seeds: readonly string[],
+) {
+  seeds.forEach((videoId, index) => {
+    expanded.push({ entryId, index, videoId });
+  });
+}
+
 /**
  * Expand allowlist entries to video ids (playlists via playlistItems.list),
  * probe unknowns, then pick nextPlayable from cursor.
+ * Catalog presets fall back to seed video ids when Data API expand fails.
  */
 export async function expandAndPickNext(
   entries: readonly AllowlistEntry[],
@@ -53,15 +65,18 @@ export async function expandAndPickNext(
 
     const ids = await listPlaylistVideoIds(entry.id, auth, apiKey, opts);
     if (!(ids instanceof Array)) {
-      // Soft transport/auth/quota: keep going with what we have; do not fail hard
-      // unless we have zero expansion so far and this was the only content.
+      const seeds = seedVideoIdsFor(entry.id);
+      if (seeds.length > 0) {
+        pushSeeds(expanded, entry.id, seeds);
+        continue;
+      }
       if (
         ids.kind === "QuotaExceeded" ||
         ids.kind === "AuthExpired" ||
         ids.kind === "NetworkDown" ||
-        ids.kind === "ConfigMissing"
+        ids.kind === "ConfigMissing" ||
+        ids.kind === "HttpError"
       ) {
-        // Soft: skip this playlist expansion, continue.
         continue;
       }
       return { status: "error", error: ids };
@@ -79,12 +94,11 @@ export async function expandAndPickNext(
         .filter((id) => !definitiveSkipIds.has(id)),
     ),
   ];
-  // Batch in chunks of 50
   for (let i = 0; i < toProbe.length; i += 50) {
     const chunk = toProbe.slice(i, i + 50);
     const meta = await fetchVideoMetadata(chunk, auth, apiKey, opts);
     if (!(meta instanceof Array)) {
-      // Soft: keep last-known (only entry.embeddable===false so far) and allow playback.
+      // Soft: allow playback with unprobed ids when API is blocked.
       break;
     }
     for (const m of meta) {

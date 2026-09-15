@@ -44,9 +44,15 @@ function playingAt(
 describe("TimerPolicy grid (YT-D5)", () => {
   it("accepts defaults and rejects off-grid / out of range", () => {
     expect(validatePolicy(DEFAULT_POLICY)).toBeNull();
-    expect(validatePolicy(policy(7, 30))?.field).toBe("watchDurationMs");
+    expect(
+      validatePolicy({
+        watchDurationMs: 90_000,
+        restDurationMs: 30 * MS_PER_MINUTE,
+      })?.field,
+    ).toBe("watchDurationMs");
     expect(validatePolicy(policy(5, 181))?.field).toBe("restDurationMs");
     expect(validatePolicy(policy(0, 30))?.field).toBe("watchDurationMs");
+    expect(validatePolicy(policy(1, 1))).toBeNull();
   });
 });
 
@@ -306,11 +312,17 @@ describe("policy validation on commands", () => {
   it("rejects PolicyOutOfRange on completeSetup and changePolicy", () => {
     const now = time(0, 0, 1);
     const engine = new TimerEngine(freshPersistedTimer());
-    const bad = engine.completeSetup(policy(7, 30), now);
+    const bad = engine.completeSetup(
+      {
+        watchDurationMs: 90_000,
+        restDurationMs: 30 * MS_PER_MINUTE,
+      },
+      now,
+    );
     expect(bad.kind).toBe("Rejected");
     if (bad.kind === "Rejected") expect(bad.error.kind).toBe("PolicyOutOfRange");
     engine.completeSetup(DEFAULT_POLICY, now);
-    const bad2 = engine.changePolicy(policy(15, 7), now);
+    const bad2 = engine.changePolicy(policy(15, 181), now);
     expect(bad2.kind).toBe("Rejected");
   });
 });

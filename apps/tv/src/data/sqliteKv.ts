@@ -19,13 +19,6 @@ export const KV_KEYS = {
   phaseStartElapsedMs: "phase_start_elapsed_ms",
   phaseStartWallMs: "phase_start_wall_ms",
   deadlineBootCount: "deadline_boot_count",
-  pinSalt: "pin_salt",
-  pinHash: "pin_hash",
-  pinIterations: "pin_iterations",
-  pinFailedAttempts: "pin_failed_attempts",
-  pinLockoutElapsedMs: "pin_lockout_elapsed_ms",
-  pinLockoutWallMs: "pin_lockout_wall_ms",
-  pinLockoutBootCount: "pin_lockout_boot_count",
   allowlistCursorEntryId: "allowlist_cursor_entry_id",
   allowlistCursorIndex: "allowlist_cursor_index",
 } as const;
