@@ -76,6 +76,7 @@ export function TvButton({
         styles.base,
         {
           minHeight: s(76),
+          minWidth: s(280),
           paddingVertical: s(18),
           paddingHorizontal: s(28),
           borderRadius: s(18),
@@ -91,7 +92,7 @@ export function TvButton({
       accessibilityLabel={label}
     >
       {({ focused }) => (
-        <Animated.View style={[styles.row, animatedStyle]}>
+        <Animated.View style={[styles.row, { gap: s(16) }, animatedStyle]}>
           <Text
             style={[
               styles.label,
@@ -117,7 +118,6 @@ export function TvButton({
 const styles = StyleSheet.create({
   base: {
     alignSelf: "flex-start",
-    minWidth: "28%",
     borderWidth: 4,
     borderColor: "transparent",
     justifyContent: "center",
@@ -127,7 +127,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 16,
   },
   primary: { backgroundColor: colors.coral },
   secondary: {

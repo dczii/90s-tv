@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Image,
   Pressable,
@@ -112,15 +112,21 @@ function PlaylistCard({
         {
           borderRadius: s(20),
           padding: s(12),
-          borderWidth: checked || focused ? 4 : 1,
-          borderColor: checked || focused ? colors.coral : colors.white10,
+          borderColor: focused
+            ? colors.coral
+            : checked
+              ? colors.white20
+              : colors.white10,
+          backgroundColor: checked ? colors.panel2 : colors.panel,
         },
       ]}
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
       accessibilityLabel={title}
     >
-      <Animated.View style={[styles.cardInner, animatedStyle]}>
+      <Animated.View
+        style={[styles.cardInner, { gap: s(8) }, animatedStyle]}
+      >
         <View style={[styles.thumbWrap, { borderRadius: s(14) }]}>
           {thumbnailUrl ? (
             <Image
@@ -161,6 +167,7 @@ export function ChooseContentScreen({
   const [selected, setSelected] = useState<Map<string, AllowlistEntry>>(
     () => new Map(allowlist.list().map((e) => [e.id, e])),
   );
+  const initialIds = useRef(new Set(selected.keys()));
 
   function togglePreset(id: string) {
     const preset = PRESET_PLAYLISTS.find((p) => p.id === id);
@@ -187,6 +194,11 @@ export function ChooseContentScreen({
   }
 
   const managing = mode === "manage";
+  const hasChanges =
+    selected.size !== initialIds.current.size ||
+    [...selected.keys()].some((id) => !initialIds.current.has(id));
+  const saveDisabled =
+    selected.size === 0 || (managing && !hasChanges);
 
   return (
     <ScreenShell
@@ -195,7 +207,11 @@ export function ChooseContentScreen({
       <ScreenHeader
         section={managing ? "Parent settings" : "Content setup"}
         title={managing ? "Manage playlists" : "Choose playlists"}
-        subtitle="Pick one or more shows. No YouTube sign-in needed."
+        subtitle={
+          managing
+            ? "Press OK to add or remove shows, then save your changes."
+            : "Pick one or more shows. No YouTube sign-in needed."
+        }
       />
       <View style={[styles.grid, { gap: s(16), marginTop: s(16) }]}>
         {PRESET_PLAYLISTS.map((item, index) => (
@@ -211,18 +227,31 @@ export function ChooseContentScreen({
           />
         ))}
       </View>
-      <View style={styles.footer}>
-        <View style={styles.footerMeta}>
+      <View style={[styles.footer, { gap: s(16), paddingTop: s(12) }]}>
+        <View style={[styles.footerMeta, { gap: s(20) }]}>
           {onBack ? (
             <TvButton label="Back" variant="secondary" onPress={onBack} />
           ) : null}
-          <Text style={[styles.count, { fontSize: s(22) }]}>
-            {selected.size} playlist{selected.size === 1 ? "" : "s"} selected
-          </Text>
+          <View style={styles.selectionSummary}>
+            <Text style={[styles.count, { fontSize: s(22) }]}>
+              {selected.size} of {PRESET_PLAYLISTS.length} shows selected
+            </Text>
+            {managing ? (
+              <Text
+                style={[
+                  styles.changeStatus,
+                  hasChanges && styles.changeStatusPending,
+                  { fontSize: s(16) },
+                ]}
+              >
+                {hasChanges ? "Unsaved changes" : "No changes yet"}
+              </Text>
+            ) : null}
+          </View>
         </View>
         <TvButton
-          label="Save playlists"
-          disabled={selected.size === 0}
+          label={managing ? "Save changes" : "Save playlists"}
+          disabled={saveDisabled}
           onPress={() => {
             const entries = [...selected.values()];
             allowlist.replaceAll(entries);
@@ -246,11 +275,9 @@ const styles = StyleSheet.create({
     width: "23.5%",
     flexGrow: 0,
     flexShrink: 0,
-    backgroundColor: colors.panel,
+    borderWidth: 4,
   },
-  cardInner: {
-    gap: 8,
-  },
+  cardInner: {},
   thumbWrap: {
     width: "100%",
     aspectRatio: 16 / 9,
@@ -273,14 +300,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: "auto",
     flexShrink: 0,
-    gap: 16,
-    paddingTop: 12,
   },
   footerMeta: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 20,
+    flexShrink: 1,
+  },
+  selectionSummary: {
     flexShrink: 1,
   },
   count: { color: colors.offWhite, fontWeight: "600" },
+  changeStatus: { color: colors.muted, fontWeight: "500" },
+  changeStatusPending: { color: colors.amber },
 });

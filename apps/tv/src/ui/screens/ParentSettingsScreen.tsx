@@ -60,11 +60,16 @@ export function ParentSettingsScreen({
         <View
           style={[
             styles.mainPanel,
-            { borderRadius: s(24), padding: s(28), flex: 1.5 },
+            {
+              borderRadius: s(24),
+              padding: s(28),
+              gap: s(10),
+              flex: 1.5,
+            },
           ]}
         >
           {editingPolicy ? (
-            <View style={styles.editBlock}>
+            <View style={[styles.editBlock, { gap: s(14) }]}>
               <Text style={[styles.sectionLabel, { fontSize: s(16) }]}>
                 WATCH & BREAK
               </Text>
@@ -168,6 +173,7 @@ export function ParentSettingsScreen({
               {
                 borderRadius: s(24),
                 padding: s(28),
+                gap: s(8),
                 borderWidth: 4,
                 borderColor: colors.coral,
               },
@@ -225,10 +231,19 @@ function SettingsRow({
 }) {
   return (
     <View style={styles.row}>
-      <Text style={[styles.rowIcon, { fontSize: s(24), color: iconColor }]}>
+      <Text
+        style={[
+          styles.rowIcon,
+          { width: s(28), fontSize: s(24), color: iconColor },
+        ]}
+      >
         {icon}
       </Text>
-      <Text style={[styles.rowLabel, { fontSize: s(22) }]}>{label}</Text>
+      <Text
+        style={[styles.rowLabel, { fontSize: s(22), marginLeft: s(12) }]}
+      >
+        {label}
+      </Text>
       <Text
         style={[
           styles.rowValue,
@@ -257,14 +272,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.white10,
     minWidth: 0,
-    gap: 10,
   },
-  editBlock: { gap: 14, minHeight: 0 },
+  editBlock: { minHeight: 0 },
   steppers: { flexDirection: "row", minHeight: 0, maxHeight: "58%" },
   sideCol: { minWidth: 0 },
   cycleCard: {
     backgroundColor: colors.panel,
-    gap: 8,
   },
   sectionLabel: {
     color: colors.muted,
@@ -276,7 +289,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
     paddingVertical: 8,
   },
   manageHit: {
@@ -286,7 +298,7 @@ const styles = StyleSheet.create({
   manageFocused: {
     borderColor: colors.coral,
   },
-  rowIcon: { width: 28, textAlign: "center" },
+  rowIcon: { textAlign: "center" },
   rowLabel: { color: colors.offWhite, fontWeight: "600", flex: 1 },
   rowValue: { color: colors.offWhite, fontWeight: "700" },
   rowValueMuted: { color: colors.muted, fontWeight: "600" },

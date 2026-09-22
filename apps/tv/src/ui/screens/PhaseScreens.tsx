@@ -1,11 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AppState,
   Image,
   StyleSheet,
   Text,
+  useTVEventHandler,
   View,
   type AppStateStatus,
+  type HWEvent,
 } from "react-native";
 import Animated, {
   FadeInDown,
@@ -28,6 +30,12 @@ import {
   EASE_OUT,
 } from "../../theme/motion";
 import type { PlayerSessionApi } from "../../player/PlayerSession";
+import {
+  formatChannelNumber,
+  stepChannel,
+  type PlaybackChannel,
+} from "../../player/channels";
+import { ChannelStrip } from "../components/ChannelStrip";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -76,8 +84,8 @@ export function ReadyScreen({
   return (
     <ScreenShell accessibilityLabel="Continue watching" atmosphere="ready">
       <BrandRow />
-      <View style={styles.readyBody}>
-        <View style={styles.readyCopy}>
+      <View style={[styles.readyBody, { gap: s(40) }]}>
+        <View style={[styles.readyCopy, { gap: s(20) }]}>
           <Text
             style={[styles.readyTitle, { fontSize: s(64), lineHeight: s(74) }]}
           >
@@ -99,6 +107,7 @@ export function ReadyScreen({
                 borderRadius: s(26),
                 paddingVertical: s(24),
                 paddingHorizontal: s(28),
+                gap: s(16),
               },
             ]}
           >
@@ -129,6 +138,7 @@ export function ReadyScreen({
             {
               borderRadius: s(42),
               padding: s(32),
+              gap: s(14),
             },
           ]}
         >
@@ -227,7 +237,7 @@ export function RestScreen({
     0,
     Math.min(1, snapshot.remainingMs / snapshot.policy.restDurationMs),
   );
-  const ring = Math.min(s(420), 280);
+  const ring = Math.min(s(360), 240);
   const stroke = s(14);
 
   return (
@@ -237,7 +247,7 @@ export function RestScreen({
         title="Time for a break"
         subtitle="The player is off. Step away, stretch, or find something fun to do."
       />
-      <View style={styles.restCenter}>
+      <View style={[styles.restCenter, { gap: s(14) }]}>
         <View style={[styles.ringWrap, { width: ring, height: ring }]}>
           <RestProgressRing size={ring} stroke={stroke} fraction={fraction} />
           <Text style={[styles.countdown, { fontSize: s(64) }]}>
@@ -272,7 +282,12 @@ type PlayingProps = {
   videoTitle: string | null;
   noPlayableSlate: boolean;
   showInfo: boolean;
+  channels: readonly PlaybackChannel[];
+  channelEntryId: string | null;
+  onTuneChannel: (entryId: string) => void;
 };
+
+const CHANNEL_OSD_MS = 4000;
 
 export function PlayingShell({
   snapshot,
@@ -281,6 +296,9 @@ export function PlayingShell({
   videoTitle,
   noPlayableSlate,
   showInfo,
+  channels,
+  channelEntryId,
+  onTuneChannel,
 }: PlayingProps) {
   const { s, safeX, safeY } = useLayout();
   const last60 = snapshot.remainingMs <= 60_000;
@@ -324,6 +342,53 @@ export function PlayingShell({
     opacity: amber.get(),
   }));
 
+  const [channelOsd, setChannelOsd] = useState(true);
+  const channelsRef = useRef(channels);
+  const activeRef = useRef(channelEntryId);
+  const tuneRef = useRef(onTuneChannel);
+  const lastStepAt = useRef(0);
+  const osdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  channelsRef.current = channels;
+  activeRef.current = channelEntryId;
+  tuneRef.current = onTuneChannel;
+
+  const revealChannels = useCallback(() => {
+    setChannelOsd(true);
+    if (osdTimer.current) clearTimeout(osdTimer.current);
+    osdTimer.current = setTimeout(() => setChannelOsd(false), CHANNEL_OSD_MS);
+  }, []);
+
+  useEffect(() => {
+    revealChannels();
+    return () => {
+      if (osdTimer.current) clearTimeout(osdTimer.current);
+    };
+  }, [channelEntryId, noPlayableSlate, revealChannels]);
+
+  const onTvEvent = useCallback((event: HWEvent) => {
+    if (event.eventKeyAction != null && event.eventKeyAction !== 0) return;
+    const delta =
+      event.eventType === "right" || event.eventType === "channelUp"
+        ? 1
+        : event.eventType === "left" || event.eventType === "channelDown"
+          ? -1
+          : 0;
+    if (delta === 0) return;
+    revealChannels();
+    const now = Date.now();
+    if (now - lastStepAt.current < 350) return;
+    lastStepAt.current = now;
+    const list = channelsRef.current;
+    if (list.length < 2) return;
+    const next = stepChannel(list, activeRef.current, delta);
+    if (!next || next.entryId === activeRef.current) return;
+    tuneRef.current(next.entryId);
+  }, [revealChannels]);
+  useTVEventHandler(onTvEvent);
+
+  const activeChannel =
+    channels.find((channel) => channel.entryId === channelEntryId) ?? null;
+
   return (
     <View style={styles.playingRoot} accessibilityLabel="Playing">
       {player.attached && !noPlayableSlate ? (
@@ -332,16 +397,26 @@ export function PlayingShell({
           style={styles.player}
           onPlayerEvent={player.onNativeEvent}
         />
-      ) : (
+      ) : noPlayableSlate ? (
         <ScreenShell>
           <Text style={[styles.slateTitle, { fontSize: s(42) }]}>
-            Nothing playable left
+            {channels.length > 1
+              ? "Nothing playable on this channel"
+              : "Nothing playable left"}
           </Text>
-          <Text style={[styles.slateBody, { fontSize: s(24) }]}>
-            This watch window keeps counting down. Rest starts when time runs
-            out.
+          <Text
+            style={[
+              styles.slateBody,
+              { fontSize: s(24), marginTop: s(12) },
+            ]}
+          >
+            {channels.length > 1
+              ? "This watch window keeps counting down. Left or right changes the channel."
+              : "This watch window keeps counting down. Rest starts when time runs out."}
           </Text>
         </ScreenShell>
+      ) : (
+        <View style={styles.playingRoot} />
       )}
       <View
         style={[
@@ -369,6 +444,28 @@ export function PlayingShell({
           {formatRemaining(snapshot.remainingMs)} left
         </Text>
       </View>
+      {activeChannel ? (
+        <View
+          style={[
+            styles.channelBadge,
+            {
+              top: safeY,
+              left: safeX,
+              borderRadius: s(34),
+              paddingHorizontal: s(24),
+              height: s(68),
+              gap: s(10),
+            },
+          ]}
+          pointerEvents="none"
+          {...({ focusable: false } as object)}
+        >
+          <Text style={[styles.channelLabel, { fontSize: s(16) }]}>CH</Text>
+          <Text style={[styles.channelDigits, { fontSize: s(32) }]}>
+            {formatChannelNumber(activeChannel.number)}
+          </Text>
+        </View>
+      ) : null}
       {showInfo && videoTitle ? (
         <Animated.View
           entering={
@@ -388,6 +485,7 @@ export function PlayingShell({
               bottom: safeY,
               borderRadius: s(24),
               padding: s(24),
+              gap: s(8),
               maxWidth: "50%",
             },
           ]}
@@ -397,6 +495,11 @@ export function PlayingShell({
           <Text style={[styles.infoTitle, { fontSize: s(32) }]}>{videoTitle}</Text>
         </Animated.View>
       ) : null}
+      <ChannelStrip
+        channels={channels}
+        activeEntryId={channelEntryId}
+        visible={channelOsd}
+      />
     </View>
   );
 }
@@ -406,12 +509,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 40,
     minHeight: 0,
   },
   readyCopy: {
     flex: 1,
-    gap: 20,
     minWidth: 0,
     justifyContent: "center",
   },
@@ -420,7 +521,6 @@ const styles = StyleSheet.create({
   availCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
     backgroundColor: colors.scrim,
     borderWidth: 1,
     borderColor: colors.white10,
@@ -435,7 +535,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panelScrim,
     borderWidth: 1,
     borderColor: colors.white10,
-    gap: 14,
     alignSelf: "stretch",
     maxHeight: "80%",
     minWidth: 0,
@@ -460,7 +559,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 14,
     minHeight: 0,
   },
   ringWrap: {
@@ -488,7 +586,7 @@ const styles = StyleSheet.create({
   playingRoot: { flex: 1, backgroundColor: "#000" },
   player: { ...StyleSheet.absoluteFill },
   slateTitle: { color: colors.offWhite, fontWeight: "700" },
-  slateBody: { color: colors.offWhite, marginTop: 12 },
+  slateBody: { color: colors.offWhite },
   pillWrap: {
     position: "absolute",
     backgroundColor: "rgba(10,16,28,0.87)",
@@ -500,10 +598,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.amber,
   },
   pillText: { color: colors.offWhite, fontWeight: "700" },
+  channelBadge: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(10,16,28,0.87)",
+    borderWidth: 1,
+    borderColor: colors.white20,
+  },
+  channelLabel: {
+    color: colors.amber,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  channelDigits: { color: colors.offWhite, fontWeight: "700" },
   infoOverlay: {
     position: "absolute",
     backgroundColor: "rgba(10,16,28,0.87)",
-    gap: 8,
   },
   infoEyebrow: {
     color: colors.amber,

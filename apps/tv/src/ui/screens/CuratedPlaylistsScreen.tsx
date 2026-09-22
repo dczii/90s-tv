@@ -28,22 +28,22 @@ export function CuratedPlaylistsScreen({ onContinue, onBack }: Props) {
             { borderRadius: s(28), padding: s(36), flex: 1.4 },
           ]}
         >
-          <View style={styles.point}>
+          <View style={[styles.point, { gap: s(16) }]}>
             <View style={[styles.badge, { width: s(40), height: s(40), borderRadius: s(20) }]}>
               <Text style={[styles.badgeText, { fontSize: s(20) }]}>✓</Text>
             </View>
-            <View style={styles.pointCopy}>
+            <View style={[styles.pointCopy, { gap: s(6) }]}>
               <Text style={[styles.pointLabel, { fontSize: s(22) }]}>Catalog</Text>
               <Text style={[styles.pointBody, { fontSize: s(28), lineHeight: s(36) }]}>
                 Little Bear, Franklin, Bear in the Big Blue House, and more
               </Text>
             </View>
           </View>
-          <View style={[styles.point, { marginTop: s(36) }]}>
+          <View style={[styles.point, { gap: s(16), marginTop: s(36) }]}>
             <View style={[styles.badge, { width: s(40), height: s(40), borderRadius: s(20) }]}>
               <Text style={[styles.badgeText, { fontSize: s(20) }]}>✓</Text>
             </View>
-            <View style={styles.pointCopy}>
+            <View style={[styles.pointCopy, { gap: s(6) }]}>
               <Text style={[styles.pointLabel, { fontSize: s(22) }]}>
                 Parent selects
               </Text>
@@ -68,7 +68,12 @@ export function CuratedPlaylistsScreen({ onContinue, onBack }: Props) {
         <View
           style={[
             styles.side,
-            { borderRadius: s(28), padding: s(28), flex: 0.75 },
+            {
+              borderRadius: s(28),
+              padding: s(28),
+              gap: s(16),
+              flex: 0.75,
+            },
           ]}
         >
           <View
@@ -84,7 +89,7 @@ export function CuratedPlaylistsScreen({ onContinue, onBack }: Props) {
           </Text>
         </View>
       </View>
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingTop: s(12) }]}>
         {onBack ? (
           <TvButton label="Back" variant="secondary" onPress={onBack} />
         ) : (
@@ -113,14 +118,14 @@ const styles = StyleSheet.create({
     borderColor: colors.white10,
     minWidth: 0,
   },
-  point: { flexDirection: "row", gap: 16, alignItems: "flex-start" },
+  point: { flexDirection: "row", alignItems: "flex-start" },
   badge: {
     backgroundColor: colors.coral,
     alignItems: "center",
     justifyContent: "center",
   },
   badgeText: { color: colors.navy, fontWeight: "700" },
-  pointCopy: { flex: 1, minWidth: 0, gap: 6 },
+  pointCopy: { flex: 1, minWidth: 0 },
   pointLabel: { color: colors.muted, fontWeight: "600" },
   pointBody: { color: colors.offWhite, fontWeight: "700" },
   callout: {
@@ -135,7 +140,6 @@ const styles = StyleSheet.create({
     borderColor: colors.white10,
     alignItems: "center",
     justifyContent: "center",
-    gap: 16,
     minWidth: 0,
   },
   sideArt: {
@@ -153,6 +157,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: "auto",
     flexShrink: 0,
-    paddingTop: 12,
   },
 });

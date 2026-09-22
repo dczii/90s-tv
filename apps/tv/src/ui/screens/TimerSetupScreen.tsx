@@ -43,7 +43,7 @@ export function TimerSetupScreen({ onSave }: Props) {
           onChange={setRestMin}
         />
       </View>
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingTop: s(16) }]}>
         {error ? (
           <Text style={[styles.error, { fontSize: s(18) }]}>{error}</Text>
         ) : (
@@ -76,7 +76,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     flexShrink: 0,
     marginTop: "auto",
-    paddingTop: 16,
   },
   error: { color: colors.amber },
 });

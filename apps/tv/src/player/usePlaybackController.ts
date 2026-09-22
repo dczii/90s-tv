@@ -1,12 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   cursorFromExpanded,
   type AllowlistEntry,
+  type ExpandedVideoId,
   type TimerPhase,
 } from "@littleplay/core";
 import type { SqliteKv } from "../data/sqliteKv";
 import { youtubeConfig, type AuthMode } from "../youtube/client";
 import { messageForApiError } from "../youtube/errors";
+import {
+  channelsFromEntries,
+  nextInChannel,
+  resumeInChannel,
+  type PlaybackChannel,
+} from "./channels";
 import { clearCursor, loadCursor, saveCursor } from "./cursorStore";
 import { expandAndPickNext } from "./expandAllowlist";
 import {
@@ -23,6 +30,8 @@ export type PlaybackUi = {
   noPlayableOnConfirm: boolean;
   continueError: string | null;
   showInfo: boolean;
+  channels: PlaybackChannel[];
+  channelEntryId: string | null;
 };
 
 /** Catalog-only: expand/probe public playlists with the Data API key. */
@@ -44,6 +53,7 @@ export function usePlaybackController(opts: {
   ui: PlaybackUi;
   continueWatching: () => Promise<void>;
   flashInfo: () => void;
+  tuneChannel: (entryId: string) => Promise<void>;
 } {
   const { phase, kv, entries, player, confirmWatching } = opts;
   const [videoId, setVideoId] = useState<string | null>(null);
@@ -53,9 +63,13 @@ export function usePlaybackController(opts: {
   const [noPlayableOnConfirm, setNoPlayableOnConfirm] = useState(false);
   const [continueError, setContinueError] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [channelEntryId, setChannelEntryId] = useState<string | null>(null);
   const infoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevPhase = useRef<TimerPhase | undefined>(undefined);
   const restoredRef = useRef(false);
+  const opRef = useRef(0);
+  const channelRef = useRef<string | null>(null);
+  const channels = useMemo(() => channelsFromEntries(entries), [entries]);
 
   const flashInfo = useCallback(() => {
     setShowInfo(true);
@@ -63,19 +77,37 @@ export function usePlaybackController(opts: {
     infoTimer.current = setTimeout(() => setShowInfo(false), 3000);
   }, []);
 
-  const playCandidate = useCallback(
-    async (id: string, title: string | null) => {
+  const commitPlay = useCallback(
+    async (next: ExpandedVideoId, op: number) => {
+      if (!kv || op !== opRef.current) return;
+      const title = entries.find((entry) => entry.id === next.entryId)?.title ?? null;
+      channelRef.current = next.entryId;
+      setChannelEntryId(next.entryId);
       setNoPlayableSlate(false);
-      setVideoId(id);
+      saveCursor(kv, cursorFromExpanded(next));
+      setVideoId(next.videoId);
       setVideoTitle(title);
       player.requestAttach();
-      // loadVideo runs from PlayingShell after mount
+      if (op !== opRef.current) return;
+      await player.loadVideo(next.videoId);
+    },
+    [entries, kv, player],
+  );
+
+  const showChannelSlate = useCallback(
+    async (op: number) => {
+      if (op !== opRef.current) return;
+      await player.detachAndDestroy();
+      if (op !== opRef.current) return;
+      setNoPlayableSlate(true);
+      setVideoId(null);
     },
     [player],
   );
 
   const skipToNext = useCallback(async () => {
     if (!kv) return;
+    const op = ++opRef.current;
     const cfg = youtubeConfig();
     const auth = catalogAuth();
     const cursor = loadCursor(kv);
@@ -87,18 +119,24 @@ export function usePlaybackController(opts: {
       {},
       true,
     );
-    if (result.status !== "ok" || !result.next) {
-      await player.detachAndDestroy();
-      setNoPlayableSlate(true);
-      setVideoId(null);
+    if (op !== opRef.current) return;
+    const entryId = channelRef.current ?? cursor?.entryId ?? null;
+    const next =
+      result.status === "ok" && entryId
+        ? nextInChannel(
+            result.expanded,
+            entryId,
+            cursor,
+            result.definitiveSkipIds,
+            true,
+          )
+        : null;
+    if (!next) {
+      await showChannelSlate(op);
       return;
     }
-    saveCursor(kv, cursorFromExpanded(result.next));
-    setVideoId(result.next.videoId);
-    setVideoTitle(null);
-    player.requestAttach();
-    await player.loadVideo(result.next.videoId);
-  }, [entries, kv, player]);
+    await commitPlay(next, op);
+  }, [commitPlay, entries, kv, showChannelSlate]);
 
   useEffect(() => {
     player.setEventHandler((event: PlayerSessionEvent) => {
@@ -132,6 +170,7 @@ export function usePlaybackController(opts: {
     if (restoredRef.current) return;
     if (phase !== "Playing" || !kv) return;
     restoredRef.current = true;
+    const op = ++opRef.current;
     void (async () => {
       const cfg = youtubeConfig();
       const auth = catalogAuth();
@@ -144,20 +183,60 @@ export function usePlaybackController(opts: {
         {},
         false,
       );
-      if (result.status !== "ok" || !result.next) {
+      if (op !== opRef.current) return;
+      const next =
+        result.status === "ok"
+          ? resumeInChannel(result.expanded, cursor, result.definitiveSkipIds)
+          : null;
+      if (!next) {
         setNoPlayableSlate(true);
         return;
       }
-      saveCursor(kv, cursorFromExpanded(result.next));
-      await playCandidate(result.next.videoId, null);
+      await commitPlay(next, op);
     })();
-  }, [phase, kv, entries, playCandidate]);
+  }, [phase, kv, entries, commitPlay]);
+
+  const tuneChannel = useCallback(
+    async (entryId: string) => {
+      if (!kv || entryId === channelRef.current) return;
+      const op = ++opRef.current;
+      channelRef.current = entryId;
+      setChannelEntryId(entryId);
+      const cfg = youtubeConfig();
+      const result = await expandAndPickNext(
+        entries,
+        { entryId, index: 0 },
+        catalogAuth(),
+        cfg.apiKey,
+        {},
+        false,
+      );
+      if (op !== opRef.current) return;
+      const next =
+        result.status === "ok"
+          ? nextInChannel(
+              result.expanded,
+              entryId,
+              null,
+              result.definitiveSkipIds,
+              false,
+            )
+          : null;
+      if (!next) {
+        await showChannelSlate(op);
+        return;
+      }
+      await commitPlay(next, op);
+    },
+    [commitPlay, entries, kv, showChannelSlate],
+  );
 
   const continueWatching = useCallback(async () => {
     if (!kv) return;
     setContinueBusy(true);
     setContinueError(null);
     setNoPlayableOnConfirm(false);
+    const op = ++opRef.current;
     try {
       if (entries.length === 0) {
         setContinueError("Add allowed videos before continuing.");
@@ -178,11 +257,17 @@ export function usePlaybackController(opts: {
         {},
         false,
       );
+      if (op !== opRef.current) return;
       if (result.status === "error") {
         setContinueError(messageForApiError(result.error));
         return;
       }
-      if (!result.next) {
+      const next = resumeInChannel(
+        result.expanded,
+        cursor,
+        result.definitiveSkipIds,
+      );
+      if (!next) {
         setNoPlayableOnConfirm(true);
         setContinueError("No playable videos in the allowlist.");
         return;
@@ -194,12 +279,11 @@ export function usePlaybackController(opts: {
       }
       // Prevent the boot-restore effect from double-attaching.
       restoredRef.current = true;
-      saveCursor(kv, cursorFromExpanded(result.next));
-      await playCandidate(result.next.videoId, null);
+      await commitPlay(next, op);
     } finally {
       setContinueBusy(false);
     }
-  }, [kv, entries, confirmWatching, playCandidate]);
+  }, [kv, entries, confirmWatching, commitPlay]);
 
   return {
     ui: {
@@ -210,9 +294,12 @@ export function usePlaybackController(opts: {
       noPlayableOnConfirm,
       continueError,
       showInfo,
+      channels,
+      channelEntryId,
     },
     continueWatching,
     flashInfo,
+    tuneChannel,
   };
 }
 

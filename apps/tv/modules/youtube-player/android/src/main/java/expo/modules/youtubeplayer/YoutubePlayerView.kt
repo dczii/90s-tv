@@ -51,6 +51,9 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
 
   init {
     orientation = VERTICAL
+    // Playback keys belong to the channel dial. A focused WebView would seek.
+    isFocusable = false
+    descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
   }
 
   fun attach() {
@@ -63,7 +66,6 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
       attached = true
       wv.loadUrl(ASSET_URL)
       // attachSession is sent from onPageFinished with current generation.
-      requestFocusForPlayback()
     }
   }
 
@@ -130,7 +132,6 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
     mainHandler.post {
       try {
         webView?.onResume()
-        requestFocusForPlayback()
       } catch (_: Exception) {
       }
     }
@@ -148,8 +149,8 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
     wv.settings.javaScriptEnabled = true
     wv.settings.domStorageEnabled = true
     wv.settings.mediaPlaybackRequiresUserGesture = false
-    wv.isFocusable = true
-    wv.isFocusableInTouchMode = true
+    wv.isFocusable = false
+    wv.isFocusableInTouchMode = false
     wv.addJavascriptInterface(JsBridge(), "NativeBridge")
     wv.webViewClient = object : WebViewClient() {
       override fun shouldInterceptRequest(
@@ -194,10 +195,6 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
 
   private fun evalJs(script: String) {
     webView?.evaluateJavascript(script, null)
-  }
-
-  private fun requestFocusForPlayback() {
-    webView?.requestFocus()
   }
 
   private inner class JsBridge {

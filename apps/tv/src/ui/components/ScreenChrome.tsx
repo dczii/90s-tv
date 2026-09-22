@@ -1,7 +1,6 @@
 import { type ReactNode } from "react";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, {
-  Circle,
   Defs,
   LinearGradient,
   Path,
@@ -60,38 +59,36 @@ function ScreenAtmosphere({ variant }: { variant: Atmosphere }) {
 }
 
 function TimerMark({ size }: { size: number }) {
-  const icon = Math.round(size * 0.58);
   return (
-    <View
-      style={[
-        styles.mark,
-        { width: size, height: size, borderRadius: Math.round(size * 0.32) },
-      ]}
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      accessibilityLabel="LittlePlay"
     >
-      <Svg width={icon} height={icon} viewBox="0 0 24 24">
-        <Circle
-          cx="12"
-          cy="13"
-          r="7.2"
-          stroke={colors.navy}
-          strokeWidth="2.2"
-          fill="none"
-        />
-        <Path
-          d="M12 9.5v3.6l2.4 1.4"
-          stroke={colors.navy}
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <Path
-          d="M9 4.2h6"
-          stroke={colors.navy}
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        />
-      </Svg>
-    </View>
+      <Path
+        d="M13.41 3.11 A 9 9 0 0 1 13.41 20.89"
+        stroke={colors.amber}
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Path
+        d="M10.59 20.89 A 9 9 0 0 1 10.59 3.11"
+        stroke={colors.green}
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Path
+        d="M10 8.4v7.2L16.2 12z"
+        fill={colors.coral}
+        stroke={colors.coral}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </Svg>
   );
 }
 
@@ -124,7 +121,7 @@ type BrandProps = {
 export function BrandRow({ section }: BrandProps) {
   const { s } = useLayout();
   return (
-    <View style={styles.brandRow}>
+    <View style={[styles.brandRow, { gap: s(12) }]}>
       <TimerMark size={s(44)} />
       <Text style={[styles.brand, { fontSize: s(24) }]}>{PRODUCT_NAME}</Text>
       {section ? (
@@ -145,7 +142,7 @@ type HeaderProps = {
 export function ScreenHeader({ title, subtitle, section }: HeaderProps) {
   const { s } = useLayout();
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { gap: s(10) }]}>
       <BrandRow section={section} />
       <Text style={[styles.title, { fontSize: s(48), lineHeight: s(56) }]}>
         {title}
@@ -174,13 +171,7 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
     flexShrink: 0,
-  },
-  mark: {
-    backgroundColor: colors.coral,
-    alignItems: "center",
-    justifyContent: "center",
   },
   brand: { color: colors.offWhite, fontWeight: "800", flexShrink: 0 },
   section: {
@@ -189,7 +180,7 @@ const styles = StyleSheet.create({
     marginLeft: "auto",
     letterSpacing: 1,
   },
-  header: { gap: 10, flexShrink: 0 },
+  header: { flexShrink: 0 },
   title: { color: colors.offWhite, fontWeight: "700" },
   subtitle: { color: colors.muted, fontWeight: "400", maxWidth: "70%" },
 });

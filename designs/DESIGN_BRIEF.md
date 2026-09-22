@@ -64,8 +64,12 @@ focus changes are immediate, without transition delays. There is no parent PIN.
 6. **Playback**
    - Full-bleed player
    - Remaining-time pill, upper-right; amber fill in the last 60 seconds
-   - Optional title overlay, lower-left
-   - Pill is not focusable
+   - Channel number badge, upper-left, aligned with the time pill (`CH` + `02`)
+   - Each selected show is a channel, numbered in save order
+   - Left / right (or channel up / down) tunes to the previous or next selected show
+   - Channel strip along the bottom while tuning, then it hides; the top-left badge stays
+   - A channel plays only that show, then loops it
+   - Pill and strip are not focusable
 
 7. **Rest timer**
    - Title: Time for a break

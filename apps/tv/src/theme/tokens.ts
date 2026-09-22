@@ -26,6 +26,8 @@ export const safe = {
 };
 
 const DESIGN_H = 1080;
+/** Keep the 1080p composition airy without making controls dominate at TV density. */
+const TV_UI_DENSITY = 0.82;
 
 export type LayoutMetrics = {
   width: number;
@@ -39,7 +41,8 @@ export type LayoutMetrics = {
 
 export function useLayout(): LayoutMetrics {
   const { width, height } = useWindowDimensions();
-  const scale = Math.min(width / 1920, height / DESIGN_H);
+  const viewportScale = Math.min(width / 1920, height / DESIGN_H);
+  const scale = Math.min(viewportScale, 1) * TV_UI_DENSITY;
   return {
     width,
     height,

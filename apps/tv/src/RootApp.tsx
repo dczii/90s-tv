@@ -168,6 +168,11 @@ export default function RootApp() {
         videoTitle={playback.ui.videoTitle}
         noPlayableSlate={playback.ui.noPlayableSlate}
         showInfo={playback.ui.showInfo}
+        channels={playback.ui.channels}
+        channelEntryId={playback.ui.channelEntryId}
+        onTuneChannel={(entryId) => {
+          void playback.tuneChannel(entryId);
+        }}
       />
     );
   }

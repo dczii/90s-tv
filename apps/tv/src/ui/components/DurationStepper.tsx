@@ -92,6 +92,7 @@ export function DurationStepper({
         {
           borderRadius: s(28),
           padding: s(28),
+          gap: s(12),
           borderWidth: focusedCard ? 4 : 1,
           borderColor: focusedCard ? colors.coral : colors.white10,
         },
@@ -101,14 +102,14 @@ export function DurationStepper({
       <Text style={[styles.eyebrow, { color: toneColor, fontSize: s(18) }]}>
         {label.toUpperCase()}
       </Text>
-      <View style={styles.valueRow}>
-        <View style={styles.valueBlock}>
+      <View style={[styles.valueRow, { gap: s(12) }]}>
+        <View style={[styles.valueBlock, { gap: s(10) }]}>
           <Text style={[styles.value, { fontSize: s(72), lineHeight: s(80) }]}>
             {valueMinutes}
           </Text>
           <Text style={[styles.unit, { fontSize: s(24) }]}>minutes</Text>
         </View>
-        <View style={styles.steps}>
+        <View style={[styles.steps, { gap: s(10) }]}>
           <StepButton
             label={`Decrease ${label}`}
             onPress={() => onChange(Math.max(min, valueMinutes - step))}
@@ -138,25 +139,22 @@ const styles = StyleSheet.create({
     minWidth: 0,
     minHeight: 0,
     justifyContent: "flex-start",
-    gap: 12,
   },
   eyebrow: { fontWeight: "700", letterSpacing: 1 },
   valueRow: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
-    gap: 12,
     minHeight: 0,
   },
   valueBlock: {
     flexDirection: "row",
     alignItems: "baseline",
-    gap: 10,
     flexShrink: 1,
   },
   value: { color: colors.offWhite, fontWeight: "700" },
   unit: { color: colors.muted, fontWeight: "500" },
-  steps: { flexDirection: "row", gap: 10, flexShrink: 0 },
+  steps: { flexDirection: "row", flexShrink: 0 },
   step: {
     backgroundColor: colors.panel2,
     alignItems: "center",

@@ -10,8 +10,8 @@ export function WelcomeScreen({ onStart }: Props) {
   return (
     <ScreenShell accessibilityLabel="Welcome" atmosphere="welcome">
       <BrandRow />
-      <View style={styles.body}>
-        <View style={styles.copy}>
+      <View style={[styles.body, { gap: s(48) }]}>
+        <View style={[styles.copy, { gap: s(22) }]}>
           <Text
             style={[styles.headline, { fontSize: s(72), lineHeight: s(86) }]}
           >
@@ -32,7 +32,7 @@ export function WelcomeScreen({ onStart }: Props) {
         <View
           style={[
             styles.preview,
-            { borderRadius: s(40), padding: s(28) },
+            { borderRadius: s(40), padding: s(28), gap: s(12) },
           ]}
         >
           <View
@@ -62,10 +62,9 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 48,
     minHeight: 0,
   },
-  copy: { flex: 1.15, gap: 22, minWidth: 0, justifyContent: "center" },
+  copy: { flex: 1.15, minWidth: 0, justifyContent: "center" },
   headline: { color: colors.offWhite, fontWeight: "700" },
   sub: { color: colors.muted, maxWidth: "88%", fontWeight: "400" },
   note: { color: colors.muted },
@@ -76,7 +75,6 @@ const styles = StyleSheet.create({
     borderColor: colors.white10,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
     alignSelf: "stretch",
     maxHeight: "72%",
   },
