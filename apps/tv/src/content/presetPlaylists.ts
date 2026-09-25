@@ -102,6 +102,15 @@ export const PRESET_PLAYLISTS: readonly PresetItem[] = [
     url: "https://www.youtube.com/watch?v=KPCBnO9nWCk",
     seedVideoIds: ["KPCBnO9nWCk"],
   },
+  {
+    id: "6utanIaKMk0",
+    kind: "Video",
+    title: "The Many Adventures of Winnie the Pooh",
+    description: "Full movie",
+    thumbnailUrl: "https://i.ytimg.com/vi/6utanIaKMk0/hqdefault.jpg",
+    url: "https://www.youtube.com/watch?v=6utanIaKMk0",
+    seedVideoIds: ["6utanIaKMk0"],
+  },
 ];
 
 export function seedVideoIdsFor(entryId: string): readonly string[] {
