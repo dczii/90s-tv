@@ -48,6 +48,38 @@ phase-driven D-pad shell. Copy `apps/tv/.env.example` → `.env` for API
 keys. Expo SDK 57 wants Node 22 (see `.nvmrc`). Assemble needs JDK 17 and
 an Android SDK; hardware OAuth / player verification is Step 5.
 
+## Debugging the TV (wireless adb)
+
+Chromecast with Google TV has no USB debugging port. Pairing and connecting
+are two steps, and they use **different ports**. The pairing code and both
+ports change every time you open the pairing dialog.
+
+On the TV: **Settings → System → Developer options → Wireless debugging**.
+Turn it on, then **Pair device with pairing code**. Note three values:
+
+- IP address (same for both steps)
+- pairing port and 6-digit code, from the pairing dialog
+- connection port, from the Wireless debugging screen behind that dialog
+
+On the Mac, `adb` lives in the SDK and is not on `PATH` by default:
+
+```
+export PATH="$HOME/Library/Android/sdk/platform-tools:$PATH"
+adb pair <ip>:<pairing-port>       # type the 6-digit code when prompted
+adb connect <ip>:<connection-port> # not the pairing port
+adb devices                         # <ip>:<connection-port>  device
+```
+
+`adb connect` with no host:port prints usage and does nothing. Pairing
+alone also leaves `adb devices` empty until `adb connect` succeeds. If the
+daemon is stale, `adb kill-server && adb start-server`, then pair again.
+
+Install and launch with the device connected:
+
+```
+pnpm --filter tv android
+```
+
 `tools/make-banner.py` still regenerates the historical Kotlin TV banner.
 The React Native banner is `apps/tv/assets/tv-banner.png` (320×180),
 produced by `tools/make-tv-banner.py`.

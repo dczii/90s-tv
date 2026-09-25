@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
-import { BackHandler, StyleSheet, Text } from "react-native";
+import { BackHandler, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeIn, FadeOut, useReducedMotion } from "react-native-reanimated";
 import { moveTaskToBack } from "youtube-player";
 import { useAppSession } from "./app/session";
 import { usePlayerSession } from "./player/PlayerSession";
@@ -16,10 +17,12 @@ import { ParentSettingsScreen } from "./ui/screens/ParentSettingsScreen";
 import { CuratedPlaylistsScreen } from "./ui/screens/CuratedPlaylistsScreen";
 import { ChooseContentScreen } from "./ui/screens/ChooseContentScreen";
 import { colors } from "./theme/tokens";
+import { duration, EASE_OUT } from "./theme/motion";
 import { ScreenShell } from "./ui/components/ScreenChrome";
 import { ScreenFade } from "./ui/motion/ScreenFade";
 
 export default function RootApp() {
+  const reducedMotion = useReducedMotion();
   const session = useAppSession();
   const player = usePlayerSession();
   const playback = usePlaybackController({
@@ -113,7 +116,7 @@ export default function RootApp() {
         }
       />
     );
-  } else if (session.showSettings) {
+  } else if (session.showSettings && session.snapshot.phase !== "Playing") {
     screenKey = "settings";
     screen = (
       <ParentSettingsScreen
@@ -161,19 +164,49 @@ export default function RootApp() {
   } else if (session.snapshot.phase === "Playing") {
     screenKey = "phase-playing";
     screen = (
-      <PlayingShell
-        snapshot={session.snapshot}
-        player={player}
-        videoId={playback.ui.videoId}
-        videoTitle={playback.ui.videoTitle}
-        noPlayableSlate={playback.ui.noPlayableSlate}
-        showInfo={playback.ui.showInfo}
-        channels={playback.ui.channels}
-        channelEntryId={playback.ui.channelEntryId}
-        onTuneChannel={(entryId) => {
-          void playback.tuneChannel(entryId);
-        }}
-      />
+      <View style={styles.playingStage}>
+        <PlayingShell
+          snapshot={session.snapshot}
+          player={player}
+          videoId={playback.ui.videoId}
+          videoTitle={playback.ui.videoTitle}
+          noPlayableSlate={playback.ui.noPlayableSlate}
+          showInfo={playback.ui.showInfo}
+          channels={playback.ui.channels}
+          channelEntryId={playback.ui.channelEntryId}
+          resumeSeconds={playback.ui.resumeSeconds}
+          onTuneChannel={(entryId) => {
+            void playback.tuneChannel(entryId);
+          }}
+          onOpenSettings={session.openSettings}
+          settingsOpen={session.showSettings}
+          onHoldPosition={playback.holdPosition}
+        />
+        {session.showSettings ? (
+          <Animated.View
+            entering={
+              reducedMotion
+                ? undefined
+                : FadeIn.duration(duration.screen).easing(EASE_OUT)
+            }
+            exiting={
+              reducedMotion
+                ? undefined
+                : FadeOut.duration(duration.fast).easing(EASE_OUT)
+            }
+            style={styles.settingsCover}
+          >
+            <ParentSettingsScreen
+              snapshot={session.snapshot}
+              allowlistCount={session.allowlistEntries.length}
+              onChangePolicy={session.changePolicy}
+              onResetCycle={session.resetCycle}
+              onManageContent={() => session.openChoose()}
+              onClose={session.closeSettings}
+            />
+          </Animated.View>
+        ) : null}
+      </View>
     );
   }
 
@@ -186,6 +219,14 @@ export default function RootApp() {
 }
 
 const styles = StyleSheet.create({
+  playingStage: { flex: 1 },
+  settingsCover: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
   body: { color: colors.offWhite, fontSize: 28 },
   error: {
     color: colors.amber,

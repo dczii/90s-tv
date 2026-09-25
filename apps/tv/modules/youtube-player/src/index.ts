@@ -16,8 +16,11 @@ export type YoutubePlayerViewProps = ViewProps & {
 
 export type YoutubePlayerViewRef = {
   attach: () => Promise<void>;
-  loadVideo: (videoId: string) => Promise<void>;
+  loadVideo: (videoId: string, startSeconds?: number) => Promise<void>;
+  /** Playback position of the loaded video, in seconds. */
+  currentTime: () => Promise<number>;
   pause: () => Promise<void>;
+  play: () => Promise<void>;
   stop: () => Promise<void>;
   detachAndDestroy: () => Promise<void>;
   onHostPause: () => Promise<void>;

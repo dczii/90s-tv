@@ -27,6 +27,7 @@
       var generation = 0;
       var player = null;
       var pendingVideoId = null;
+      var pendingStart = 0;
       var apiReady = false;
 
       function emit(type, extra) {
@@ -71,10 +72,12 @@
         }
       }
 
-      function createOrLoad(id) {
+      function createOrLoad(id, startSeconds) {
+        var start = Number(startSeconds) || 0;
+        if (start < 0) start = 0;
         if (player) {
           try {
-            player.loadVideoById(id);
+            player.loadVideoById({ videoId: id, startSeconds: start });
           } catch (e) {
             emit("error", { code: 5 });
           }
@@ -86,13 +89,14 @@
           videoId: id,
           playerVars: {
             autoplay: 1,
-            controls: 1,
+            controls: 0,
             enablejsapi: 1,
             origin: "https://appassets.androidplatform.net",
             playsinline: 1,
             rel: 0,
             modestbranding: 1,
             fs: 1,
+            start: Math.floor(start),
           },
           events: {
             onReady: function () {
@@ -112,19 +116,39 @@
         });
       }
 
-      function loadVideo(id) {
+      function loadVideo(id, startSeconds) {
         if (!id) return;
+        var start = Number(startSeconds) || 0;
+        if (start < 0) start = 0;
         if (!apiReady || typeof YT === "undefined" || !YT.Player) {
           pendingVideoId = id;
+          pendingStart = start;
           return;
         }
         pendingVideoId = null;
-        createOrLoad(id);
+        pendingStart = 0;
+        createOrLoad(id, start);
+      }
+
+      function currentTime() {
+        try {
+          if (player && player.getCurrentTime) {
+            var t = player.getCurrentTime();
+            if (typeof t === "number" && isFinite(t) && t > 0) return t;
+          }
+        } catch (e) {}
+        return 0;
       }
 
       function pause() {
         try {
           if (player && player.pauseVideo) player.pauseVideo();
+        } catch (e) {}
+      }
+
+      function play() {
+        try {
+          if (player && player.playVideo) player.playVideo();
         } catch (e) {}
       }
 
@@ -140,14 +164,17 @@
         } catch (e) {}
         player = null;
         pendingVideoId = null;
+        pendingStart = 0;
       }
 
       function onYouTubeIframeAPIReady() {
         apiReady = true;
         if (pendingVideoId) {
           var id = pendingVideoId;
+          var start = pendingStart;
           pendingVideoId = null;
-          createOrLoad(id);
+          pendingStart = 0;
+          createOrLoad(id, start);
         }
       }
       window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;

@@ -1,22 +1,30 @@
+import { forwardRef, type ComponentRef } from "react";
 import { Pressable, StyleSheet, Text, type PressableProps } from "react-native";
 import Animated from "react-native-reanimated";
 import { colors, useLayout } from "../../theme/tokens";
 import { usePressScale } from "../motion/usePressScale";
 
-/** Muted text control used on Ready / Rest for Parent settings. */
-export function QuietLink({
-  label,
-  onPress,
-  preferredFocus,
-}: {
-  label: string;
-  onPress: () => void;
-  preferredFocus?: boolean;
-}) {
+/** Muted text control used on Ready / Rest / Playing for Parent settings. */
+export const QuietLink = forwardRef<
+  ComponentRef<typeof Pressable>,
+  {
+    label: string;
+    onPress: () => void;
+    preferredFocus?: boolean;
+    onFocus?: () => void;
+    onBlur?: () => void;
+  }
+>(function QuietLink(
+  { label, onPress, preferredFocus, onFocus, onBlur },
+  ref,
+) {
   const { s } = useLayout();
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
+      onFocus={onFocus}
+      onBlur={onBlur}
       {...(preferredFocus ? ({ hasTVPreferredFocus: true } as object) : {})}
       style={({ focused }) => [
         styles.link,
@@ -33,7 +41,7 @@ export function QuietLink({
       <Text style={[styles.linkLabel, { fontSize: s(20) }]}>{label}</Text>
     </Pressable>
   );
-}
+});
 
 type Props = PressableProps & {
   label: string;

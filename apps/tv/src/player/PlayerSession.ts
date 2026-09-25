@@ -25,7 +25,10 @@ export type PlayerSessionApi = {
   detachAndDestroy: () => Promise<void>;
   /** Mark attached so the view mounts; call loadVideo after mount/attach. */
   requestAttach: () => void;
-  loadVideo: (videoId: string) => Promise<void>;
+  loadVideo: (videoId: string, startSeconds?: number) => Promise<void>;
+  currentTime: () => Promise<number>;
+  pause: () => Promise<void>;
+  play: () => Promise<void>;
   onNativeEvent: (event: NativeSyntheticEvent<PlayerEventPayload>) => void;
   onHostPause: () => Promise<void>;
   onHostResume: () => Promise<void>;
@@ -66,13 +69,43 @@ export function usePlayerSession(): PlayerSessionApi {
     setAttached(false);
   }, []);
 
-  const loadVideo = useCallback(async (videoId: string) => {
+  const loadVideo = useCallback(async (videoId: string, startSeconds = 0) => {
     const ref = nativeRef.current;
     if (!ref) return;
     await ref.attach();
     const gen = await ref.currentGeneration().catch(() => null);
     if (gen != null) expectedGenerationRef.current = gen;
-    await ref.loadVideo(videoId);
+    const start = Number.isFinite(startSeconds) && startSeconds > 0 ? startSeconds : 0;
+    await ref.loadVideo(videoId, start);
+  }, []);
+
+  const pause = useCallback(async () => {
+    try {
+      await nativeRef.current?.pause();
+    } catch {
+      /* ok */
+    }
+  }, []);
+
+  const play = useCallback(async () => {
+    try {
+      await nativeRef.current?.play();
+    } catch {
+      /* ok */
+    }
+  }, []);
+
+  const currentTime = useCallback(async () => {
+    const ref = nativeRef.current;
+    if (!ref) return 0;
+    try {
+      const value = await ref.currentTime();
+      return typeof value === "number" && Number.isFinite(value) && value > 0
+        ? value
+        : 0;
+    } catch {
+      return 0;
+    }
   }, []);
 
   const onNativeEvent = useCallback(
@@ -138,6 +171,9 @@ export function usePlayerSession(): PlayerSessionApi {
     detachAndDestroy,
     requestAttach,
     loadVideo,
+    currentTime,
+    pause,
+    play,
     onNativeEvent,
     onHostPause,
     onHostResume,

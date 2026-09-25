@@ -12,6 +12,8 @@ import {
   channelsFromEntries,
   nextInChannel,
   resumeInChannel,
+  resumeOnChannel,
+  type ChannelResume,
   type PlaybackChannel,
 } from "./channels";
 import { clearCursor, loadCursor, saveCursor } from "./cursorStore";
@@ -32,6 +34,8 @@ export type PlaybackUi = {
   showInfo: boolean;
   channels: PlaybackChannel[];
   channelEntryId: string | null;
+  /** Seconds to start the current video at. 0 plays from the beginning. */
+  resumeSeconds: number;
 };
 
 /** Catalog-only: expand/probe public playlists with the Data API key. */
@@ -54,6 +58,8 @@ export function usePlaybackController(opts: {
   continueWatching: () => Promise<void>;
   flashInfo: () => void;
   tuneChannel: (entryId: string) => Promise<void>;
+  /** Remember the live playback position so a later remount seeks back. */
+  holdPosition: (seconds: number) => void;
 } {
   const { phase, kv, entries, player, confirmWatching } = opts;
   const [videoId, setVideoId] = useState<string | null>(null);
@@ -68,7 +74,11 @@ export function usePlaybackController(opts: {
   const prevPhase = useRef<TimerPhase | undefined>(undefined);
   const restoredRef = useRef(false);
   const opRef = useRef(0);
+  const [resumeSeconds, setResumeSeconds] = useState(0);
   const channelRef = useRef<string | null>(null);
+  const videoIdRef = useRef<string | null>(null);
+  const spotsRef = useRef(new Map<string, ChannelResume>());
+  const tuneChain = useRef(Promise.resolve());
   const channels = useMemo(() => channelsFromEntries(entries), [entries]);
 
   const flashInfo = useCallback(() => {
@@ -78,18 +88,26 @@ export function usePlaybackController(opts: {
   }, []);
 
   const commitPlay = useCallback(
-    async (next: ExpandedVideoId, op: number) => {
+    async (next: ExpandedVideoId, op: number, startSeconds = 0) => {
       if (!kv || op !== opRef.current) return;
       const title = entries.find((entry) => entry.id === next.entryId)?.title ?? null;
+      const start =
+        Number.isFinite(startSeconds) && startSeconds > 0 ? startSeconds : 0;
       channelRef.current = next.entryId;
+      videoIdRef.current = next.videoId;
+      spotsRef.current.set(next.entryId, {
+        videoId: next.videoId,
+        seconds: start,
+      });
       setChannelEntryId(next.entryId);
       setNoPlayableSlate(false);
       saveCursor(kv, cursorFromExpanded(next));
       setVideoId(next.videoId);
+      setResumeSeconds(start);
       setVideoTitle(title);
       player.requestAttach();
       if (op !== opRef.current) return;
-      await player.loadVideo(next.videoId);
+      await player.loadVideo(next.videoId, start);
     },
     [entries, kv, player],
   );
@@ -101,6 +119,8 @@ export function usePlaybackController(opts: {
       if (op !== opRef.current) return;
       setNoPlayableSlate(true);
       setVideoId(null);
+      setResumeSeconds(0);
+      videoIdRef.current = null;
     },
     [player],
   );
@@ -161,6 +181,8 @@ export function usePlaybackController(opts: {
     if (prev === "Playing" && phase !== "Playing") {
       void player.detachAndDestroy();
       setVideoId(null);
+      setResumeSeconds(0);
+      videoIdRef.current = null;
       setNoPlayableSlate(false);
     }
   }, [phase, player]);
@@ -196,39 +218,64 @@ export function usePlaybackController(opts: {
     })();
   }, [phase, kv, entries, commitPlay]);
 
+  const holdPosition = useCallback((seconds: number) => {
+    if (!(seconds >= 1)) return;
+    const entryId = channelRef.current;
+    const video = videoIdRef.current;
+    if (entryId && video) {
+      spotsRef.current.set(entryId, { videoId: video, seconds });
+    }
+    setResumeSeconds(seconds);
+  }, []);
+
   const tuneChannel = useCallback(
-    async (entryId: string) => {
-      if (!kv || entryId === channelRef.current) return;
-      const op = ++opRef.current;
-      channelRef.current = entryId;
-      setChannelEntryId(entryId);
-      const cfg = youtubeConfig();
-      const result = await expandAndPickNext(
-        entries,
-        { entryId, index: 0 },
-        catalogAuth(),
-        cfg.apiKey,
-        {},
-        false,
+    (entryId: string) => {
+      const job = tuneChain.current.catch(() => undefined).then(async () => {
+        if (!kv || entryId === channelRef.current) return;
+        const leavingId = channelRef.current;
+        const leavingVideo = videoIdRef.current;
+        const seconds =
+          leavingId && leavingVideo ? await player.currentTime() : 0;
+        if (entryId === channelRef.current) return;
+        if (leavingId && leavingVideo && seconds >= 1) {
+          spotsRef.current.set(leavingId, { videoId: leavingVideo, seconds });
+        }
+        const op = ++opRef.current;
+        channelRef.current = entryId;
+        setChannelEntryId(entryId);
+        const cfg = youtubeConfig();
+        const result = await expandAndPickNext(
+          entries,
+          { entryId, index: 0 },
+          catalogAuth(),
+          cfg.apiKey,
+          {},
+          false,
+        );
+        if (op !== opRef.current) return;
+        const target =
+          result.status === "ok"
+            ? resumeOnChannel(
+                result.expanded,
+                entryId,
+                spotsRef.current.get(entryId) ?? null,
+                result.definitiveSkipIds,
+                loadCursor(kv),
+              )
+            : null;
+        if (!target) {
+          await showChannelSlate(op);
+          return;
+        }
+        await commitPlay(target.item, op, target.seconds);
+      });
+      tuneChain.current = job.then(
+        () => undefined,
+        () => undefined,
       );
-      if (op !== opRef.current) return;
-      const next =
-        result.status === "ok"
-          ? nextInChannel(
-              result.expanded,
-              entryId,
-              null,
-              result.definitiveSkipIds,
-              false,
-            )
-          : null;
-      if (!next) {
-        await showChannelSlate(op);
-        return;
-      }
-      await commitPlay(next, op);
+      return job;
     },
-    [commitPlay, entries, kv, showChannelSlate],
+    [commitPlay, entries, kv, player, showChannelSlate],
   );
 
   const continueWatching = useCallback(async () => {
@@ -296,10 +343,12 @@ export function usePlaybackController(opts: {
       showInfo,
       channels,
       channelEntryId,
+      resumeSeconds,
     },
     continueWatching,
     flashInfo,
     tuneChannel,
+    holdPosition,
   };
 }
 

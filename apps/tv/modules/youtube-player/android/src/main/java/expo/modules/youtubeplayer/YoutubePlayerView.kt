@@ -2,6 +2,7 @@ package expo.modules.youtubeplayer
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
@@ -13,7 +14,9 @@ import androidx.webkit.WebViewAssetLoader
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
+import expo.modules.kotlin.Promise
 import org.json.JSONObject
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -43,6 +46,7 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
   private var webView: WebView? = null
   private var attached = false
   private var pendingVideoId: String? = null
+  private var pendingStartSeconds: Double = 0.0
   private var pageReady = false
 
   private val onPlayerEvent by EventDispatcher()
@@ -51,6 +55,8 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
 
   init {
     orientation = VERTICAL
+    clipToOutline = true
+    setBackgroundColor(Color.BLACK)
     // Playback keys belong to the channel dial. A focused WebView would seek.
     isFocusable = false
     descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
@@ -69,21 +75,41 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
     }
   }
 
-  fun loadVideo(videoId: String) {
+  fun loadVideo(videoId: String, startSeconds: Double = 0.0) {
+    val start = if (startSeconds.isFinite() && startSeconds > 0.0) startSeconds else 0.0
     mainHandler.post {
       pendingVideoId = videoId
+      pendingStartSeconds = start
       if (!attached || webView == null) {
         attach()
         return@post
       }
       if (pageReady) {
-        evalJs("loadVideo(${JSONObject.quote(videoId)})")
+        evalJs(loadVideoCall(videoId, start))
+      }
+    }
+  }
+
+  /** Seconds into the video currently loaded. 0 when the player is not up. */
+  fun readCurrentTime(promise: Promise) {
+    mainHandler.post {
+      val wv = webView
+      if (wv == null || !pageReady) {
+        promise.resolve(0.0)
+        return@post
+      }
+      wv.evaluateJavascript("currentTime()") { raw ->
+        promise.resolve(raw?.toDoubleOrNull() ?: 0.0)
       }
     }
   }
 
   fun pausePlayer() {
     mainHandler.post { evalJs("pause()") }
+  }
+
+  fun playPlayer() {
+    mainHandler.post { evalJs("play()") }
   }
 
   fun stopPlayer() {
@@ -99,6 +125,7 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
     generation.incrementAndGet()
     pageReady = false
     pendingVideoId = null
+    pendingStartSeconds = 0.0
     attached = false
     val wv = webView ?: return
     try {
@@ -151,6 +178,8 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
     wv.settings.mediaPlaybackRequiresUserGesture = false
     wv.isFocusable = false
     wv.isFocusableInTouchMode = false
+    wv.clipToOutline = true
+    wv.setBackgroundColor(Color.BLACK)
     wv.addJavascriptInterface(JsBridge(), "NativeBridge")
     wv.webViewClient = object : WebViewClient() {
       override fun shouldInterceptRequest(
@@ -165,7 +194,7 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
         pageReady = true
         view.evaluateJavascript("attachSession($g)", null)
         pendingVideoId?.let { id ->
-          view.evaluateJavascript("loadVideo(${JSONObject.quote(id)})", null)
+          view.evaluateJavascript(loadVideoCall(id, pendingStartSeconds), null)
         }
       }
 
@@ -191,6 +220,11 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
     return ALLOWED_HOST_SUFFIXES.any { suffix ->
       h == suffix || h.endsWith(".$suffix")
     }
+  }
+
+  private fun loadVideoCall(videoId: String, startSeconds: Double): String {
+    val start = String.format(Locale.US, "%.3f", startSeconds)
+    return "loadVideo(${JSONObject.quote(videoId)}, $start)"
   }
 
   private fun evalJs(script: String) {

@@ -4,22 +4,31 @@ import {
   Image,
   StyleSheet,
   Text,
+  TVEventControl,
   useTVEventHandler,
   View,
+  type LayoutChangeEvent,
   type AppStateStatus,
   type HWEvent,
 } from "react-native";
 import Animated, {
-  FadeInDown,
-  FadeOutDown,
+  interpolateColor,
   useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withSequence,
   withTiming,
 } from "react-native-reanimated";
-import Svg, { Circle } from "react-native-svg";
-import type { TimerSnapshot } from "@littleplay/core";
+import Svg, {
+  Circle,
+  Defs,
+  Ellipse,
+  RadialGradient,
+  Rect,
+  Stop,
+} from "react-native-svg";
+import { PRODUCT_NAME, type TimerSnapshot } from "@littleplay/core";
 import { YoutubePlayerView } from "youtube-player";
 import { QuietLink, TvButton } from "../components/TvButton";
 import { BrandRow, ScreenHeader, ScreenShell } from "../components/ScreenChrome";
@@ -28,14 +37,15 @@ import {
   duration,
   EASE_LINEAR,
   EASE_OUT,
+  popScaleFrom,
 } from "../../theme/motion";
 import type { PlayerSessionApi } from "../../player/PlayerSession";
 import {
+  channelDeltaForTvEvent,
   formatChannelNumber,
   stepChannel,
   type PlaybackChannel,
 } from "../../player/channels";
-import { ChannelStrip } from "../components/ChannelStrip";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -64,6 +74,12 @@ function formatRemaining(ms: number): string {
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/** 5…1 while the watch window is in its last five seconds, otherwise null. */
+function endingCountdown(remainingMs: number): number | null {
+  if (remainingMs <= 0 || remainingMs > 5_000) return null;
+  return Math.ceil(remainingMs / 1000);
 }
 
 export function ReadyScreen({
@@ -284,10 +300,26 @@ type PlayingProps = {
   showInfo: boolean;
   channels: readonly PlaybackChannel[];
   channelEntryId: string | null;
+  resumeSeconds: number;
   onTuneChannel: (entryId: string) => void;
+  onOpenSettings: () => void;
+  settingsOpen: boolean;
+  onHoldPosition: (seconds: number) => void;
 };
 
-const CHANNEL_OSD_MS = 4000;
+/** How long the center channel digits stay up after a tune. */
+const CEREMONY_MS = 1160;
+
+const TUBE = {
+  bezel: "#14110E",
+  lip: "#0C0B0A",
+  line: "#2A2622",
+} as const;
+
+function requestTvFocus(node: unknown) {
+  const target = node as { requestTVFocus?: () => void } | null;
+  target?.requestTVFocus?.();
+}
 
 export function PlayingShell({
   snapshot,
@@ -298,20 +330,66 @@ export function PlayingShell({
   showInfo,
   channels,
   channelEntryId,
+  resumeSeconds,
   onTuneChannel,
+  onOpenSettings,
+  settingsOpen,
+  onHoldPosition,
 }: PlayingProps) {
-  const { s, safeX, safeY } = useLayout();
+  const { s } = useLayout();
   const last60 = snapshot.remainingMs <= 60_000;
+  const endCount = endingCountdown(snapshot.remainingMs);
+  const [heldCount, setHeldCount] = useState<number | null>(endCount);
   const loadedRef = useRef<string | null>(null);
   const reduced = useReducedMotion();
   const amber = useSharedValue(last60 ? 1 : 0);
+  const boot = useSharedValue(0);
+  const allowMove = useSharedValue(reduced ? 0 : 1);
+  const veil = useSharedValue(0);
+  const osd = useSharedValue(0);
+  const endShown = useSharedValue(0);
+  const endPop = useSharedValue(1);
+  const glassH = useSharedValue(0);
+  const [ceremony, setCeremony] = useState(false);
+  const [glassBox, setGlassBox] = useState({ width: 0, height: 0 });
+  const onGlassLayout = useCallback((event: LayoutChangeEvent) => {
+    const next = event.nativeEvent.layout;
+    glassH.set(next.height);
+    setGlassBox((prev) =>
+      prev.width === next.width && prev.height === next.height
+        ? prev
+        : { width: next.width, height: next.height },
+    );
+  }, [glassH]);
+
+  const settingsOpenRef = useRef(settingsOpen);
+  settingsOpenRef.current = settingsOpen;
 
   useEffect(() => {
     if (!player.attached || !videoId) return;
     if (loadedRef.current === videoId) return;
     loadedRef.current = videoId;
-    void player.loadVideo(videoId);
-  }, [player, player.attached, videoId]);
+    void (async () => {
+      await player.loadVideo(videoId, resumeSeconds);
+      if (settingsOpenRef.current) await player.pause();
+    })();
+  }, [player, player.attached, resumeSeconds, videoId]);
+
+  const pausedForSettings = useRef(false);
+  useEffect(() => {
+    if (settingsOpen) {
+      pausedForSettings.current = true;
+      void (async () => {
+        const seconds = await player.currentTime();
+        onHoldPosition(seconds);
+        await player.pause();
+      })();
+      return;
+    }
+    if (!pausedForSettings.current) return;
+    pausedForSettings.current = false;
+    void player.play();
+  }, [onHoldPosition, player, settingsOpen]);
 
   useEffect(() => {
     const onChange = (next: AppStateStatus) => {
@@ -338,43 +416,177 @@ export function PlayingShell({
     );
   }, [amber, last60, reduced]);
 
-  const amberStyle = useAnimatedStyle(() => ({
+  const ledPlateStyle = useAnimatedStyle(() => ({
     opacity: amber.get(),
   }));
+  const ledTextStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      amber.get(),
+      [0, 1],
+      [colors.amber, colors.navy],
+    ),
+  }));
 
-  const [channelOsd, setChannelOsd] = useState(true);
   const channelsRef = useRef(channels);
   const activeRef = useRef(channelEntryId);
   const tuneRef = useRef(onTuneChannel);
+  const openSettingsRef = useRef(onOpenSettings);
+  const settingsFocused = useRef(false);
+  const settingsLinkRef = useRef<View>(null);
+  const sinkRef = useRef<View>(null);
   const lastStepAt = useRef(0);
-  const osdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ceremonyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTuned = useRef<string | null | undefined>(undefined);
   channelsRef.current = channels;
   activeRef.current = channelEntryId;
   tuneRef.current = onTuneChannel;
+  openSettingsRef.current = onOpenSettings;
 
-  const revealChannels = useCallback(() => {
-    setChannelOsd(true);
-    if (osdTimer.current) clearTimeout(osdTimer.current);
-    osdTimer.current = setTimeout(() => setChannelOsd(false), CHANNEL_OSD_MS);
+  useEffect(() => {
+    TVEventControl.enableTVMenuKey();
+    return () => TVEventControl.disableTVMenuKey();
   }, []);
 
   useEffect(() => {
-    revealChannels();
+    allowMove.set(reduced ? 0 : 1);
+  }, [allowMove, reduced]);
+
+  useEffect(() => {
+    boot.set(
+      withTiming(1, {
+        duration: reduced ? 200 : 280,
+        easing: EASE_OUT,
+      }),
+    );
+  }, [boot, reduced]);
+
+  useEffect(() => {
     return () => {
-      if (osdTimer.current) clearTimeout(osdTimer.current);
+      if (ceremonyTimer.current) clearTimeout(ceremonyTimer.current);
     };
-  }, [channelEntryId, noPlayableSlate, revealChannels]);
+  }, []);
+
+  useEffect(() => {
+    if (lastTuned.current === undefined) {
+      lastTuned.current = channelEntryId;
+      return;
+    }
+    if (lastTuned.current === channelEntryId) return;
+    lastTuned.current = channelEntryId;
+    setCeremony(true);
+    if (ceremonyTimer.current) clearTimeout(ceremonyTimer.current);
+    ceremonyTimer.current = setTimeout(() => setCeremony(false), CEREMONY_MS);
+    if (reduced) return;
+    veil.set(
+      withSequence(
+        withTiming(0.36, { duration: 90, easing: EASE_OUT }),
+        withTiming(0, { duration: 90, easing: EASE_OUT }),
+      ),
+    );
+  }, [channelEntryId, reduced, veil]);
+
+  if (endCount != null && heldCount !== endCount) setHeldCount(endCount);
+
+  const wantOsd = (ceremony || showInfo) && endCount == null;
+  useEffect(() => {
+    osd.set(
+      withTiming(wantOsd ? 1 : 0, {
+        duration: reduced ? 200 : wantOsd ? duration.fast : duration.press,
+        easing: EASE_OUT,
+      }),
+    );
+  }, [osd, reduced, wantOsd]);
+
+  useEffect(() => {
+    endShown.set(
+      withTiming(endCount == null ? 0 : 1, {
+        duration: reduced ? 200 : duration.fast,
+        easing: EASE_OUT,
+      }),
+    );
+  }, [endCount, endShown, reduced]);
+
+  useEffect(() => {
+    if (endCount == null) return;
+    if (reduced) {
+      endPop.set(1);
+      return;
+    }
+    endPop.set(
+      withSequence(
+        withTiming(popScaleFrom, { duration: 0 }),
+        withTiming(1, { duration: duration.fast, easing: EASE_OUT }),
+      ),
+    );
+  }, [endCount, endPop, reduced]);
+
+  const shutterTopStyle = useAnimatedStyle(() => {
+    const shown = boot.get();
+    const distance = glassH.get() / 2;
+    if (allowMove.get() === 0 || distance <= 0) {
+      return { opacity: 0, transform: [{ translateY: 0 }] };
+    }
+    return {
+      opacity: 1,
+      transform: [{ translateY: -shown * distance }],
+    };
+  });
+  const shutterBottomStyle = useAnimatedStyle(() => {
+    const shown = boot.get();
+    const distance = glassH.get() / 2;
+    if (allowMove.get() === 0 || distance <= 0) {
+      return { opacity: 0, transform: [{ translateY: 0 }] };
+    }
+    return {
+      opacity: 1,
+      transform: [{ translateY: shown * distance }],
+    };
+  });
+  const reducedCoverStyle = useAnimatedStyle(() => ({
+    opacity: allowMove.get() === 0 ? 1 - boot.get() : 0,
+  }));
+  const slitStyle = useAnimatedStyle(() => ({
+    opacity: allowMove.get() === 0 ? 0 : 1 - boot.get(),
+  }));
+  const glassFxStyle = useAnimatedStyle(() => ({
+    opacity: boot.get(),
+  }));
+  const veilStyle = useAnimatedStyle(() => ({
+    opacity: veil.get(),
+  }));
+  const osdStyle = useAnimatedStyle(() => {
+    const shown = osd.get();
+    const scale = allowMove.get() === 0 ? 1 : 0.96 + shown * 0.04;
+    return {
+      opacity: shown,
+      transform: [{ scale }],
+    };
+  });
+  const endWrapStyle = useAnimatedStyle(() => ({
+    opacity: endShown.get(),
+  }));
+  const endDigitStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: allowMove.get() === 0 ? 1 : endPop.get() }],
+  }));
 
   const onTvEvent = useCallback((event: HWEvent) => {
-    if (event.eventKeyAction != null && event.eventKeyAction !== 0) return;
-    const delta =
-      event.eventType === "right" || event.eventType === "channelUp"
-        ? 1
-        : event.eventType === "left" || event.eventType === "channelDown"
-          ? -1
-          : 0;
+    if (settingsOpenRef.current) return;
+    if (event.eventKeyAction != null && event.eventKeyAction !== 1) return;
+    if (event.eventType === "menu") {
+      openSettingsRef.current();
+      return;
+    }
+    if (event.eventType === "down" && !settingsFocused.current) {
+      requestTvFocus(settingsLinkRef.current);
+      return;
+    }
+    if (event.eventType === "up" && settingsFocused.current) {
+      requestTvFocus(sinkRef.current);
+      return;
+    }
+    if (settingsFocused.current) return;
+    const delta = channelDeltaForTvEvent(event);
     if (delta === 0) return;
-    revealChannels();
     const now = Date.now();
     if (now - lastStepAt.current < 350) return;
     lastStepAt.current = now;
@@ -382,124 +594,280 @@ export function PlayingShell({
     if (list.length < 2) return;
     const next = stepChannel(list, activeRef.current, delta);
     if (!next || next.entryId === activeRef.current) return;
+    // Apply before the next render so a quick opposite press does not
+    // step from the channel we just left.
+    activeRef.current = next.entryId;
     tuneRef.current(next.entryId);
-  }, [revealChannels]);
+  }, []);
   useTVEventHandler(onTvEvent);
 
   const activeChannel =
     channels.find((channel) => channel.entryId === channelEntryId) ?? null;
+  const readoutTitle = activeChannel?.title ?? videoTitle;
+  const glassRadius = s(14);
+  const channelLabel = activeChannel
+    ? formatChannelNumber(activeChannel.number)
+    : null;
 
   return (
-    <View style={styles.playingRoot} accessibilityLabel="Playing">
-      {player.attached && !noPlayableSlate ? (
-        <YoutubePlayerView
-          ref={player.nativeRef}
-          style={styles.player}
-          onPlayerEvent={player.onNativeEvent}
-        />
-      ) : noPlayableSlate ? (
-        <ScreenShell>
-          <Text style={[styles.slateTitle, { fontSize: s(42) }]}>
-            {channels.length > 1
-              ? "Nothing playable on this channel"
-              : "Nothing playable left"}
-          </Text>
-          <Text
-            style={[
-              styles.slateBody,
-              { fontSize: s(24), marginTop: s(12) },
-            ]}
-          >
-            {channels.length > 1
-              ? "This watch window keeps counting down. Left or right changes the channel."
-              : "This watch window keeps counting down. Rest starts when time runs out."}
-          </Text>
-        </ScreenShell>
-      ) : (
-        <View style={styles.playingRoot} />
-      )}
+    <View
+      style={styles.playingRoot}
+      accessibilityLabel="Playing"
+      {...({
+        trapFocusLeft: !settingsOpen,
+        trapFocusRight: !settingsOpen,
+        trapFocusUp: !settingsOpen,
+        trapFocusDown: !settingsOpen,
+      } as object)}
+    >
+      {/*
+        The player blocks focus so the WebView cannot seek. With nothing
+        focused, Android never delivers D-pad keys. This sink holds focus
+        without drawing a highlight over the video.
+      */}
+      <View
+        ref={sinkRef}
+        style={styles.keySink}
+        focusable={!settingsOpen}
+        accessible={false}
+        importantForAccessibility="no"
+        {...({ hasTVPreferredFocus: !settingsOpen } as object)}
+      />
       <View
         style={[
-          styles.pillWrap,
+          styles.bezel,
           {
-            top: safeY,
-            right: safeX,
-            borderRadius: s(34),
+            borderRadius: s(28),
             paddingHorizontal: s(18),
-            paddingVertical: s(12),
+            paddingTop: s(18),
+            paddingBottom: s(12),
+            gap: s(12),
           },
         ]}
-        pointerEvents="none"
-        {...({ focusable: false } as object)}
       >
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            styles.pillAmberFill,
-            { borderRadius: s(34) },
-            amberStyle,
-          ]}
-        />
-        <Text style={[styles.pillText, { fontSize: s(22), zIndex: 1 }]}>
-          {formatRemaining(snapshot.remainingMs)} left
-        </Text>
-      </View>
-      {activeChannel ? (
         <View
           style={[
-            styles.channelBadge,
-            {
-              top: safeY,
-              left: safeX,
-              borderRadius: s(34),
-              paddingHorizontal: s(24),
-              height: s(68),
-              gap: s(10),
-            },
+            styles.lip,
+            { borderRadius: s(18), padding: s(6) },
           ]}
-          pointerEvents="none"
-          {...({ focusable: false } as object)}
         >
-          <Text style={[styles.channelLabel, { fontSize: s(16) }]}>CH</Text>
-          <Text style={[styles.channelDigits, { fontSize: s(32) }]}>
-            {formatChannelNumber(activeChannel.number)}
-          </Text>
+          <View
+            style={[styles.glass, { borderRadius: glassRadius }]}
+            onLayout={onGlassLayout}
+          >
+            <View style={StyleSheet.absoluteFill}>
+              {player.attached && !noPlayableSlate ? (
+                <YoutubePlayerView
+                  ref={player.nativeRef}
+                  style={[styles.player, { borderRadius: glassRadius }]}
+                  onPlayerEvent={player.onNativeEvent}
+                />
+              ) : noPlayableSlate ? (
+                <View style={[styles.slate, { paddingHorizontal: s(36) }]}>
+                  <Text style={[styles.slateTitle, { fontSize: s(36) }]}>
+                    {channels.length > 1
+                      ? "Nothing playable on this channel"
+                      : "Nothing playable left"}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.slateBody,
+                      { fontSize: s(22), marginTop: s(12) },
+                    ]}
+                  >
+                    {channels.length > 1
+                      ? "This watch window keeps counting down. Left or right changes the channel."
+                      : "This watch window keeps counting down. Rest starts when time runs out."}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.shutter, styles.shutterTop, shutterTopStyle]}
+            />
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.shutter, styles.shutterBottom, shutterBottomStyle]}
+            />
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.reducedCover, reducedCoverStyle]}
+            />
+            <Animated.View
+              pointerEvents="none"
+              style={[StyleSheet.absoluteFill, glassFxStyle]}
+            >
+              {glassBox.width > 0 ? (
+              <Svg
+                width={glassBox.width}
+                height={glassBox.height}
+                pointerEvents="none"
+              >
+                <Defs>
+                  <RadialGradient
+                    id="tubeVig"
+                    cx="50%"
+                    cy="50%"
+                    rx="68%"
+                    ry="68%"
+                  >
+                    <Stop offset="0.52" stopColor="#000" stopOpacity={0} />
+                    <Stop offset="1" stopColor="#000" stopOpacity={0.55} />
+                  </RadialGradient>
+                  <RadialGradient
+                    id="tubeGlint"
+                    cx="24%"
+                    cy="16%"
+                    rx="46%"
+                    ry="46%"
+                  >
+                    <Stop offset="0" stopColor="#fff" stopOpacity={0.16} />
+                    <Stop offset="1" stopColor="#fff" stopOpacity={0} />
+                  </RadialGradient>
+                </Defs>
+                <Rect width="100%" height="100%" fill="url(#tubeVig)" />
+                <Rect width="100%" height="100%" fill="url(#tubeGlint)" />
+              </Svg>
+              ) : null}
+            </Animated.View>
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.veil, veilStyle]}
+            />
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.slitGlow, slitStyle]}
+            />
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.slit, slitStyle]}
+            />
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.osd, osdStyle]}
+              accessible={false}
+            >
+              <Svg
+                width="100%"
+                height="100%"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                style={StyleSheet.absoluteFill}
+              >
+                <Ellipse
+                  cx={50}
+                  cy={46}
+                  rx={34}
+                  ry={28}
+                  fill="#06080c"
+                  fillOpacity={0.55}
+                />
+              </Svg>
+              {channelLabel ? (
+                <Text style={[styles.osdNum, { fontSize: s(88) }]}>
+                  {channelLabel}
+                </Text>
+              ) : null}
+              {readoutTitle ? (
+                <Text
+                  style={[styles.osdTitle, { fontSize: s(28) }]}
+                  numberOfLines={2}
+                >
+                  {readoutTitle}
+                </Text>
+              ) : null}
+            </Animated.View>
+            {heldCount != null ? (
+              <Animated.View
+                pointerEvents="none"
+                accessible={endCount != null}
+                accessibilityLabel={
+                  endCount != null ? `${endCount} seconds left` : undefined
+                }
+                style={[styles.endCount, endWrapStyle]}
+              >
+                <Svg
+                  width="100%"
+                  height="100%"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  style={StyleSheet.absoluteFill}
+                >
+                  <Ellipse
+                    cx={50}
+                    cy={50}
+                    rx={28}
+                    ry={32}
+                    fill="#06080c"
+                    fillOpacity={0.62}
+                  />
+                </Svg>
+                <Animated.Text
+                  style={[
+                    styles.endDigit,
+                    { fontSize: s(220) },
+                    endDigitStyle,
+                  ]}
+                >
+                  {heldCount}
+                </Animated.Text>
+              </Animated.View>
+            ) : null}
+          </View>
         </View>
-      ) : null}
-      {showInfo && videoTitle ? (
-        <Animated.View
-          entering={
-            reduced
-              ? undefined
-              : FadeInDown.duration(duration.fast).easing(EASE_OUT)
-          }
-          exiting={
-            reduced
-              ? undefined
-              : FadeOutDown.duration(duration.press).easing(EASE_OUT)
-          }
-          style={[
-            styles.infoOverlay,
-            {
-              left: safeX,
-              bottom: safeY,
-              borderRadius: s(24),
-              padding: s(24),
-              gap: s(8),
-              maxWidth: "50%",
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <Text style={[styles.infoEyebrow, { fontSize: s(16) }]}>NOW PLAYING</Text>
-          <Text style={[styles.infoTitle, { fontSize: s(32) }]}>{videoTitle}</Text>
-        </Animated.View>
-      ) : null}
-      <ChannelStrip
-        channels={channels}
-        activeEntryId={channelEntryId}
-        visible={channelOsd}
-      />
+        <View style={[styles.chin, { minHeight: s(56) }]}>
+          <View style={[styles.chRead, { gap: s(8) }]}>
+            {channelLabel ? (
+              <>
+                <Text style={[styles.chK, { fontSize: s(14) }]}>CH</Text>
+                <Text style={[styles.chN, { fontSize: s(32) }]}>
+                  {channelLabel}
+                </Text>
+              </>
+            ) : null}
+          </View>
+          {settingsOpen ? (
+            <View pointerEvents="none" style={styles.markWrap}>
+              <Text style={[styles.mark, { fontSize: s(13) }]}>
+                {PRODUCT_NAME.toUpperCase()}
+              </Text>
+            </View>
+          ) : (
+            <QuietLink
+              ref={settingsLinkRef}
+              label="Parent settings"
+              onPress={onOpenSettings}
+              onFocus={() => {
+                settingsFocused.current = true;
+              }}
+              onBlur={() => {
+                settingsFocused.current = false;
+              }}
+            />
+          )}
+          <View style={styles.led}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.ledPlate,
+                { borderRadius: s(10) },
+                ledPlateStyle,
+              ]}
+            />
+            <Animated.Text
+              style={[styles.ledNum, { fontSize: s(26) }, ledTextStyle]}
+            >
+              {formatRemaining(snapshot.remainingMs)}
+            </Animated.Text>
+            <Animated.Text
+              style={[styles.ledCap, { fontSize: s(11) }, ledTextStyle]}
+            >
+              LEFT
+            </Animated.Text>
+          </View>
+        </View>
+      </View>
     </View>
   );
 }
@@ -583,43 +951,173 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   restFooter: { flexShrink: 0 },
-  playingRoot: { flex: 1, backgroundColor: "#000" },
-  player: { ...StyleSheet.absoluteFill },
-  slateTitle: { color: colors.offWhite, fontWeight: "700" },
-  slateBody: { color: colors.offWhite },
-  pillWrap: {
-    position: "absolute",
-    backgroundColor: "rgba(10,16,28,0.87)",
+  playingRoot: {
+    flex: 1,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  keySink: { position: "absolute", width: 1, height: 1, opacity: 0 },
+  bezel: {
+    width: "86%",
+    backgroundColor: TUBE.bezel,
     borderWidth: 1,
-    borderColor: colors.white20,
+    borderColor: TUBE.line,
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 8,
+  },
+  lip: {
+    width: "100%",
+    backgroundColor: TUBE.lip,
+    borderWidth: 1,
+    borderColor: TUBE.line,
+  },
+  glass: {
+    width: "100%",
+    aspectRatio: 16 / 9,
     overflow: "hidden",
+    backgroundColor: "#000",
   },
-  pillAmberFill: {
-    backgroundColor: colors.amber,
+  player: { ...StyleSheet.absoluteFill },
+  slate: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  pillText: { color: colors.offWhite, fontWeight: "700" },
-  channelBadge: {
+  slateTitle: {
+    color: colors.offWhite,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  slateBody: { color: colors.offWhite, textAlign: "center" },
+  shutter: {
     position: "absolute",
+    left: 0,
+    right: 0,
+    height: "50%",
+    backgroundColor: "#000",
+    zIndex: 2,
+  },
+  shutterTop: { top: 0 },
+  shutterBottom: { bottom: 0 },
+  reducedCover: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "#000",
+    zIndex: 2,
+  },
+  veil: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "#000",
+    zIndex: 3,
+  },
+  slitGlow: {
+    position: "absolute",
+    left: "8%",
+    right: "8%",
+    top: "50%",
+    height: 8,
+    marginTop: -4,
+    backgroundColor: "rgba(248, 198, 93, 0.35)",
+    zIndex: 4,
+  },
+  slit: {
+    position: "absolute",
+    left: "10%",
+    right: "10%",
+    top: "50%",
+    height: 2,
+    marginTop: -1,
+    backgroundColor: colors.amber,
+    zIndex: 5,
+  },
+  osd: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  osdNum: {
+    color: colors.amber,
+    fontFamily: "monospace",
+    fontWeight: "700",
+    letterSpacing: 2,
+    textShadowColor: "rgba(0, 0, 0, 0.65)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 12,
+  },
+  osdTitle: {
+    maxWidth: "70%",
+    color: colors.offWhite,
+    fontWeight: "600",
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.65)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
+  },
+  endCount: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 7,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  endDigit: {
+    color: colors.amber,
+    fontFamily: "monospace",
+    fontWeight: "700",
+    textShadowColor: "rgba(0, 0, 0, 0.7)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 18,
+  },
+  chin: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(10,16,28,0.87)",
-    borderWidth: 1,
-    borderColor: colors.white20,
+    justifyContent: "space-between",
   },
-  channelLabel: {
+  chRead: { flexDirection: "row", alignItems: "baseline", minWidth: 72 },
+  chK: {
     color: colors.amber,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 1.5,
   },
-  channelDigits: { color: colors.offWhite, fontWeight: "700" },
-  infoOverlay: {
+  chN: {
+    color: colors.offWhite,
+    fontFamily: "monospace",
+    fontWeight: "700",
+  },
+  markWrap: {
     position: "absolute",
-    backgroundColor: "rgba(10,16,28,0.87)",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  infoEyebrow: {
+  mark: {
+    color: "rgba(245, 242, 234, 0.38)",
+    fontWeight: "600",
+    letterSpacing: 3,
+  },
+  led: { alignItems: "flex-end", justifyContent: "center" },
+  ledPlate: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: colors.amber,
+  },
+  ledNum: {
     color: colors.amber,
+    fontFamily: "monospace",
     fontWeight: "700",
     letterSpacing: 1,
+    zIndex: 1,
   },
-  infoTitle: { color: colors.offWhite, fontWeight: "700" },
+  ledCap: {
+    color: colors.amber,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    zIndex: 1,
+  },
 });

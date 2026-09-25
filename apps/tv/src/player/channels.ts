@@ -32,6 +32,21 @@ export function channelsFromEntries(
  * Step the dial. Unknown current lands on the first channel for a positive
  * step and the last channel for a negative step. The dial wraps.
  */
+/**
+ * Android TV emits D-pad and channel keys on key up (`eventKeyAction` 1).
+ * Key down is not sent unless a native flag is turned on, so treating 0 as
+ * the only press drops every remote left/right.
+ */
+export function channelDeltaForTvEvent(event: {
+  eventType?: string | null;
+  eventKeyAction?: number | null;
+}): number {
+  if (event.eventKeyAction != null && event.eventKeyAction !== 1) return 0;
+  if (event.eventType === "right" || event.eventType === "channelUp") return 1;
+  if (event.eventType === "left" || event.eventType === "channelDown") return -1;
+  return 0;
+}
+
 export function stepChannel(
   channels: readonly PlaybackChannel[],
   currentEntryId: string | null,
@@ -45,6 +60,47 @@ export function stepChannel(
   const next = (at + delta) % channels.length;
   const wrapped = next < 0 ? next + channels.length : next;
   return channels[wrapped] ?? null;
+}
+
+export type ChannelResume = {
+  videoId: string;
+  seconds: number;
+};
+
+/** Ignore a glance at a channel so coming back does not seek to a flash. */
+const MIN_RESUME_SECONDS = 1;
+
+/**
+ * Where to start a channel. A remembered spot wins when that video is still
+ * playable; otherwise the channel starts at its first playable video.
+ */
+export function resumeOnChannel(
+  expanded: readonly ExpandedVideoId[],
+  entryId: string,
+  spot: ChannelResume | null,
+  definitiveSkipIds: ReadonlySet<string> = new Set(),
+  cursor: AllowlistCursor | null = null,
+): { item: ExpandedVideoId; seconds: number } | null {
+  if (
+    spot &&
+    spot.seconds >= MIN_RESUME_SECONDS &&
+    !definitiveSkipIds.has(spot.videoId)
+  ) {
+    const remembered = expanded.find(
+      (item) => item.entryId === entryId && item.videoId === spot.videoId,
+    );
+    if (remembered) return { item: remembered, seconds: spot.seconds };
+  }
+  const onThisChannel = cursor?.entryId === entryId ? cursor : null;
+  const item = nextInChannel(
+    expanded,
+    entryId,
+    onThisChannel,
+    definitiveSkipIds,
+    false,
+  );
+  if (!item) return null;
+  return { item, seconds: 0 };
 }
 
 /**

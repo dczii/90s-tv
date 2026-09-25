@@ -20,12 +20,20 @@ class YoutubePlayerModule : Module() {
         view.attach()
       }
 
-      AsyncFunction("loadVideo") { view: YoutubePlayerView, videoId: String ->
-        view.loadVideo(videoId)
+      AsyncFunction("loadVideo") { view: YoutubePlayerView, videoId: String, startSeconds: Double ->
+        view.loadVideo(videoId, startSeconds)
+      }
+
+      AsyncFunction("currentTime") { view: YoutubePlayerView, promise: expo.modules.kotlin.Promise ->
+        view.readCurrentTime(promise)
       }
 
       AsyncFunction("pause") { view: YoutubePlayerView ->
         view.pausePlayer()
+      }
+
+      AsyncFunction("play") { view: YoutubePlayerView ->
+        view.playPlayer()
       }
 
       AsyncFunction("stop") { view: YoutubePlayerView ->
