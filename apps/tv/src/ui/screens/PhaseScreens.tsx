@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import Animated, {
   interpolateColor,
+  type SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
@@ -24,6 +25,7 @@ import Svg, {
   Circle,
   Defs,
   Ellipse,
+  Path,
   RadialGradient,
   Rect,
   Stop,
@@ -35,6 +37,7 @@ import { BrandRow, ScreenHeader, ScreenShell } from "../components/ScreenChrome"
 import { colors, useLayout } from "../../theme/tokens";
 import {
   duration,
+  EASE_IN_OUT,
   EASE_LINEAR,
   EASE_OUT,
   popScaleFrom,
@@ -48,6 +51,7 @@ import {
 } from "../../player/channels";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 type ReadyProps = {
   snapshot: TimerSnapshot;
@@ -316,9 +320,133 @@ const TUBE = {
   line: "#2A2622",
 } as const;
 
+/** How long the watch ring takes to settle on each 1s timer tick. */
+const RING_TICK_MS = 400;
+
 function requestTvFocus(node: unknown) {
   const target = node as { requestTVFocus?: () => void } | null;
   target?.requestTVFocus?.();
+}
+
+/** Rounded-rect outline inset into a width×height box, drawn clockwise from 12 o'clock. */
+function rimPath(
+  width: number,
+  height: number,
+  outerRadius: number,
+  inset: number,
+) {
+  const left = inset;
+  const top = inset;
+  const right = width - inset;
+  const bottom = height - inset;
+  const r = Math.max(
+    0,
+    Math.min(outerRadius - inset, (right - left) / 2, (bottom - top) / 2),
+  );
+  const mid = width / 2;
+  const d = [
+    `M ${mid} ${top}`,
+    `H ${right - r}`,
+    `A ${r} ${r} 0 0 1 ${right} ${top + r}`,
+    `V ${bottom - r}`,
+    `A ${r} ${r} 0 0 1 ${right - r} ${bottom}`,
+    `H ${left + r}`,
+    `A ${r} ${r} 0 0 1 ${left} ${bottom - r}`,
+    `V ${top + r}`,
+    `A ${r} ${r} 0 0 1 ${left + r} ${top}`,
+    `H ${mid}`,
+  ].join(" ");
+  const length =
+    2 * (right - left - 2 * r) + 2 * (bottom - top - 2 * r) + 2 * Math.PI * r;
+  return { d, length: Math.max(0, length) };
+}
+
+/**
+ * Watch time left, lit along the bezel rim. Full when the window opens; the
+ * lit end retreats counterclockwise to 12 o'clock as time runs out.
+ */
+function WatchTimeRing({
+  fraction,
+  warn,
+  outerRadius,
+  stroke,
+  edge,
+}: {
+  fraction: number;
+  /** 0→1 as the last minute starts; crossfades the strip to amber. */
+  warn: SharedValue<number>;
+  outerRadius: number;
+  stroke: number;
+  edge: number;
+}) {
+  const reduced = useReducedMotion();
+  const progress = useSharedValue(fraction);
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  const onLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setBox((prev) =>
+      prev.width === width && prev.height === height
+        ? prev
+        : { width, height },
+    );
+  }, []);
+
+  useEffect(() => {
+    if (reduced) {
+      progress.set(fraction);
+      return;
+    }
+    // Settle each tick rather than sweep linearly: the SVG spans the whole
+    // bezel, so it should sit idle over playing video most of each second.
+    progress.set(
+      withTiming(fraction, { duration: RING_TICK_MS, easing: EASE_IN_OUT }),
+    );
+  }, [fraction, progress, reduced]);
+
+  const { d, length } = rimPath(
+    box.width,
+    box.height,
+    outerRadius,
+    edge + stroke / 2,
+  );
+
+  const litProps = useAnimatedProps(() => ({
+    strokeDashoffset: length * (1 - progress.get()),
+  }));
+  const warnProps = useAnimatedProps(() => ({
+    strokeDashoffset: length * (1 - progress.get()),
+    opacity: warn.get(),
+  }));
+
+  return (
+    <View
+      pointerEvents="none"
+      style={StyleSheet.absoluteFill}
+      onLayout={onLayout}
+    >
+      {box.width > 0 ? (
+        <Svg width={box.width} height={box.height}>
+          <Path d={d} stroke={TUBE.line} strokeWidth={stroke} fill="none" />
+          <AnimatedPath
+            d={d}
+            stroke={colors.green}
+            strokeWidth={stroke}
+            fill="none"
+            strokeDasharray={`${length} ${length}`}
+            animatedProps={litProps}
+          />
+          <AnimatedPath
+            d={d}
+            stroke={colors.amber}
+            strokeWidth={stroke}
+            fill="none"
+            strokeDasharray={`${length} ${length}`}
+            animatedProps={warnProps}
+          />
+        </Svg>
+      ) : null}
+    </View>
+  );
 }
 
 export function PlayingShell({
@@ -338,6 +466,10 @@ export function PlayingShell({
 }: PlayingProps) {
   const { s } = useLayout();
   const last60 = snapshot.remainingMs <= 60_000;
+  const watchFraction = Math.max(
+    0,
+    Math.min(1, snapshot.remainingMs / snapshot.policy.watchDurationMs),
+  );
   const endCount = endingCountdown(snapshot.remainingMs);
   const [heldCount, setHeldCount] = useState<number | null>(endCount);
   const loadedRef = useRef<string | null>(null);
@@ -605,6 +737,9 @@ export function PlayingShell({
     channels.find((channel) => channel.entryId === channelEntryId) ?? null;
   const readoutTitle = activeChannel?.title ?? videoTitle;
   const glassRadius = s(14);
+  const bezelRadius = s(28);
+  // The band under the chin is the bezel's thinnest; the strip fits inside it.
+  const rim = s(12);
   const channelLabel = activeChannel
     ? formatChannelNumber(activeChannel.number)
     : null;
@@ -637,14 +772,21 @@ export function PlayingShell({
         style={[
           styles.bezel,
           {
-            borderRadius: s(28),
+            borderRadius: bezelRadius,
             paddingHorizontal: s(18),
             paddingTop: s(18),
-            paddingBottom: s(12),
+            paddingBottom: rim,
             gap: s(12),
           },
         ]}
       >
+        <WatchTimeRing
+          fraction={watchFraction}
+          warn={amber}
+          outerRadius={bezelRadius - styles.bezel.borderWidth}
+          stroke={Math.max(3, Math.round(rim * 0.4))}
+          edge={Math.max(2, Math.round(rim * 0.3))}
+        />
         <View
           style={[
             styles.lip,

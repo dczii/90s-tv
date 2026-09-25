@@ -2125,171 +2125,643 @@
       "height": 1080,
       "clip": true,
       "layout": "none",
-      "fill": "#0A101C",
+      "fill": "#000000",
       "children": [
         {
-          "id": "rect-145",
-          "type": "rectangle",
-          "name": null,
-          "x": 0,
-          "y": 0,
-          "width": 1920,
-          "height": 1080,
-          "cornerRadius": 0,
-          "fill": "#172333"
-        },
-        {
-          "id": "rect-146",
-          "type": "rectangle",
-          "name": null,
-          "x": 0,
-          "y": 0,
-          "width": 1920,
-          "height": 1080,
-          "cornerRadius": 0,
-          "fill": {
-            "type": "gradient",
-            "gradientType": "radial",
-            "center": {
-              "x": 0.48,
-              "y": 0.44
-            },
-            "size": {
-              "width": 0.9,
-              "height": 0.9
-            },
-            "colors": [
-              {
-                "color": "#466078",
-                "position": 0
-              },
-              {
-                "color": "#172333",
-                "position": 1
-              }
-            ]
-          }
-        },
-        {
-          "id": "icon-147",
-          "type": "icon",
-          "library": "Material Symbols Rounded",
-          "icon": "smart_display",
-          "x": 856,
-          "y": 430,
-          "width": 208,
-          "height": 208,
-          "weight": 500,
-          "fill": "#F5F2EA88"
-        },
-        {
-          "id": "rect-148",
-          "type": "rectangle",
-          "name": null,
-          "x": 1550,
-          "y": 54,
-          "width": 286,
-          "height": 68,
-          "cornerRadius": 34,
-          "fill": "#0A101CDD",
-          "stroke": "#FFFFFF33",
-          "strokeWidth": 1,
-          "strokeAlignment": "inner"
-        },
-        {
-          "id": "icon-149",
-          "type": "icon",
-          "library": "Material Symbols Rounded",
-          "icon": "schedule",
-          "x": 1580,
-          "y": 72,
-          "width": 30,
-          "height": 30,
-          "weight": 500,
-          "fill": "#F8C65D"
-        },
-        {
-          "id": "text-150",
-          "type": "text",
-          "name": null,
-          "content": "12:48 left",
-          "x": 1626,
-          "y": 72,
-          "fontFamily": "Inter",
-          "fontSize": 25,
-          "fontWeight": "700",
-          "lineHeight": 1.2,
-          "fill": "#F5F2EA",
-          "textAlign": "left"
-        },
-        {
-          "id": "rect-151",
-          "type": "rectangle",
-          "name": null,
-          "x": 64,
-          "y": 820,
-          "width": 760,
-          "height": 188,
+          "id": "pb-bezel",
+          "type": "frame",
+          "name": "Bezel",
+          "x": 135.0,
+          "y": 34.0,
+          "width": 1650,
+          "height": 1012,
           "cornerRadius": 28,
-          "fill": "#0A101CDD"
-        },
+          "fill": "#14110E",
+          "stroke": "#2A2622",
+          "strokeWidth": 1,
+          "strokeAlignment": "inner",
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "offset": {
+              "x": 0,
+              "y": 16
+            },
+            "blur": 24,
+            "color": "#00000059"
+          },
+          "layout": "vertical",
+          "padding": [
+            18,
+            18,
+            12,
+            18
+          ],
+          "gap": 12,
+          "children": [
+            {
+              "id": "pb-ring-track",
+              "type": "path",
+              "name": "Watch ring track",
+              "layoutPosition": "absolute",
+              "x": 0,
+              "y": 0,
+              "width": 1650,
+              "height": 1012,
+              "viewBox": [
+                0,
+                0,
+                1650,
+                1012
+              ],
+              "geometry": "M 825 6.5 L 1622 6.5 A 21.5 21.5 0 0 1 1643.5 28 L 1643.5 984 A 21.5 21.5 0 0 1 1622 1005.5 L 28 1005.5 A 21.5 21.5 0 0 1 6.5 984 L 6.5 28 A 21.5 21.5 0 0 1 28 6.5 L 825 6.5",
+              "stroke": "#2A2622",
+              "strokeWidth": 5,
+              "strokeAlignment": "center"
+            },
+            {
+              "id": "pb-ring-lit",
+              "type": "path",
+              "name": "Watch ring",
+              "layoutPosition": "absolute",
+              "x": 0,
+              "y": 0,
+              "width": 1650,
+              "height": 1012,
+              "viewBox": [
+                0,
+                0,
+                1650,
+                1012
+              ],
+              "geometry": "M 825 6.5 L 1622 6.5 A 21.5 21.5 0 0 1 1643.5 28 L 1643.5 984 A 21.5 21.5 0 0 1 1622 1005.5 L 28 1005.5 A 21.5 21.5 0 0 1 6.5 984 L 6.5 28 A 21.5 21.5 0 0 1 28 6.5 L 57.19 6.5",
+              "stroke": "#65D6A6",
+              "strokeWidth": 5,
+              "strokeAlignment": "center"
+            },
+            {
+              "id": "pb-lip",
+              "type": "frame",
+              "name": "Lip",
+              "cornerRadius": 18,
+              "fill": "#0C0B0A",
+              "stroke": "#2A2622",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "padding": 7,
+              "children": [
+                {
+                  "id": "pb-glass",
+                  "type": "frame",
+                  "name": "Glass",
+                  "width": 1600,
+                  "height": 900,
+                  "cornerRadius": 14,
+                  "clip": true,
+                  "layout": "none",
+                  "fill": "#000000",
+                  "children": [
+                    {
+                      "id": "pb-video",
+                      "type": "rectangle",
+                      "name": "Video",
+                      "x": 0,
+                      "y": 0,
+                      "width": 1600,
+                      "height": 900,
+                      "fill": {
+                        "type": "gradient",
+                        "gradientType": "radial",
+                        "center": {
+                          "x": 0.48,
+                          "y": 0.44
+                        },
+                        "size": {
+                          "width": 0.9,
+                          "height": 0.9
+                        },
+                        "colors": [
+                          {
+                            "color": "#466078",
+                            "position": 0
+                          },
+                          {
+                            "color": "#172333",
+                            "position": 1
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "pb-video-icon",
+                      "type": "icon",
+                      "library": "Material Symbols Rounded",
+                      "icon": "smart_display",
+                      "x": 696.0,
+                      "y": 346.0,
+                      "width": 208,
+                      "height": 208,
+                      "weight": 500,
+                      "fill": "#F5F2EA88"
+                    },
+                    {
+                      "id": "pb-video-label",
+                      "type": "text",
+                      "content": "PLAYER AREA",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "700",
+                      "lineHeight": 1.2,
+                      "fill": "#FFFFFF55",
+                      "x": 650.0,
+                      "y": 836,
+                      "width": 300,
+                      "textGrowth": "fixed-width",
+                      "textAlign": "center"
+                    },
+                    {
+                      "id": "pb-vignette",
+                      "type": "rectangle",
+                      "name": "Tube vignette",
+                      "x": 0,
+                      "y": 0,
+                      "width": 1600,
+                      "height": 900,
+                      "fill": {
+                        "type": "gradient",
+                        "gradientType": "radial",
+                        "size": {
+                          "width": 1.36,
+                          "height": 1.36
+                        },
+                        "colors": [
+                          {
+                            "color": "#00000000",
+                            "position": 0.52
+                          },
+                          {
+                            "color": "#0000008C",
+                            "position": 1
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "pb-glint",
+                      "type": "rectangle",
+                      "name": "Tube glint",
+                      "x": 0,
+                      "y": 0,
+                      "width": 1600,
+                      "height": 900,
+                      "fill": {
+                        "type": "gradient",
+                        "gradientType": "radial",
+                        "center": {
+                          "x": 0.24,
+                          "y": 0.16
+                        },
+                        "size": {
+                          "width": 0.92,
+                          "height": 0.92
+                        },
+                        "colors": [
+                          {
+                            "color": "#FFFFFF29",
+                            "position": 0
+                          },
+                          {
+                            "color": "#FFFFFF00",
+                            "position": 1
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "pb-chin",
+              "type": "frame",
+              "name": "Chin",
+              "width": "fill_container",
+              "height": 56,
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "pb-ch",
+                  "type": "frame",
+                  "name": "Channel",
+                  "gap": 8,
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "id": "pb-ch-k",
+                      "type": "text",
+                      "content": "CH",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700",
+                      "lineHeight": 1.2,
+                      "fill": "#F8C65D",
+                      "letterSpacing": 1.5
+                    },
+                    {
+                      "id": "pb-ch-n",
+                      "type": "text",
+                      "content": "02",
+                      "fontFamily": "Roboto Mono",
+                      "fontSize": 32,
+                      "fontWeight": "700",
+                      "lineHeight": 1.2,
+                      "fill": "#F5F2EA"
+                    }
+                  ]
+                },
+                {
+                  "id": "pb-settings",
+                  "type": "frame",
+                  "name": "Parent settings",
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "cornerRadius": 12,
+                  "children": [
+                    {
+                      "id": "pb-settings-label",
+                      "type": "text",
+                      "content": "Parent settings",
+                      "fontFamily": "Inter",
+                      "fontSize": 20,
+                      "fontWeight": "600",
+                      "lineHeight": 1.2,
+                      "fill": "#94A3B8"
+                    }
+                  ]
+                },
+                {
+                  "id": "pb-led",
+                  "type": "frame",
+                  "name": "Time left",
+                  "layout": "vertical",
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "id": "pb-led-num",
+                      "type": "text",
+                      "content": "12:48",
+                      "fontFamily": "Roboto Mono",
+                      "fontSize": 26,
+                      "fontWeight": "700",
+                      "lineHeight": 1.2,
+                      "fill": "#F8C65D",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "id": "pb-led-cap",
+                      "type": "text",
+                      "content": "LEFT",
+                      "fontFamily": "Inter",
+                      "fontSize": 11,
+                      "fontWeight": "700",
+                      "lineHeight": 1.2,
+                      "fill": "#F8C65D",
+                      "letterSpacing": 1.5
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "screen-pb-last",
+      "type": "frame",
+      "name": "06b \u2014 Playback, last minute",
+      "x": 2040,
+      "y": 2400,
+      "width": 1920,
+      "height": 1080,
+      "clip": true,
+      "layout": "none",
+      "fill": "#000000",
+      "children": [
         {
-          "id": "text-152",
-          "type": "text",
-          "name": null,
-          "content": "Saturday Cartoons",
-          "x": 100,
-          "y": 856,
-          "fontFamily": "Inter",
-          "fontSize": 20,
-          "fontWeight": "750",
-          "lineHeight": 1.2,
-          "fill": "#F8C65D",
-          "textAlign": "left"
-        },
-        {
-          "id": "text-153",
-          "type": "text",
-          "name": null,
-          "content": "The Clockmaker\u2019s Adventure",
-          "x": 100,
-          "y": 902,
-          "fontFamily": "Inter",
-          "fontSize": 34,
-          "fontWeight": "700",
-          "lineHeight": 1.2,
-          "fill": "#F5F2EA",
-          "textAlign": "left"
-        },
-        {
-          "id": "text-154",
-          "type": "text",
-          "name": null,
-          "content": "YouTube player controls remain unobscured",
-          "x": 100,
-          "y": 954,
-          "fontFamily": "Inter",
-          "fontSize": 18,
-          "fontWeight": "500",
-          "lineHeight": 1.2,
-          "fill": "#94A3B8",
-          "textAlign": "left"
-        },
-        {
-          "id": "text-155",
-          "type": "text",
-          "name": null,
-          "content": "PLAYER AREA",
-          "x": 810,
-          "y": 1022,
-          "fontFamily": "Inter",
-          "fontSize": 16,
-          "fontWeight": "700",
-          "lineHeight": 1.2,
-          "fill": "#FFFFFF55",
-          "textAlign": "center",
-          "width": 300,
-          "textGrowth": "fixed-width"
+          "id": "pbl-bezel",
+          "type": "frame",
+          "name": "Bezel",
+          "x": 135.0,
+          "y": 34.0,
+          "width": 1650,
+          "height": 1012,
+          "cornerRadius": 28,
+          "fill": "#14110E",
+          "stroke": "#2A2622",
+          "strokeWidth": 1,
+          "strokeAlignment": "inner",
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "offset": {
+              "x": 0,
+              "y": 16
+            },
+            "blur": 24,
+            "color": "#00000059"
+          },
+          "layout": "vertical",
+          "padding": [
+            18,
+            18,
+            12,
+            18
+          ],
+          "gap": 12,
+          "children": [
+            {
+              "id": "pbl-ring-track",
+              "type": "path",
+              "name": "Watch ring track",
+              "layoutPosition": "absolute",
+              "x": 0,
+              "y": 0,
+              "width": 1650,
+              "height": 1012,
+              "viewBox": [
+                0,
+                0,
+                1650,
+                1012
+              ],
+              "geometry": "M 825 6.5 L 1622 6.5 A 21.5 21.5 0 0 1 1643.5 28 L 1643.5 984 A 21.5 21.5 0 0 1 1622 1005.5 L 28 1005.5 A 21.5 21.5 0 0 1 6.5 984 L 6.5 28 A 21.5 21.5 0 0 1 28 6.5 L 825 6.5",
+              "stroke": "#2A2622",
+              "strokeWidth": 5,
+              "strokeAlignment": "center"
+            },
+            {
+              "id": "pbl-ring-lit",
+              "type": "path",
+              "name": "Watch ring",
+              "layoutPosition": "absolute",
+              "x": 0,
+              "y": 0,
+              "width": 1650,
+              "height": 1012,
+              "viewBox": [
+                0,
+                0,
+                1650,
+                1012
+              ],
+              "geometry": "M 825 6.5 L 1069.3 6.5",
+              "stroke": "#F8C65D",
+              "strokeWidth": 5,
+              "strokeAlignment": "center"
+            },
+            {
+              "id": "pbl-lip",
+              "type": "frame",
+              "name": "Lip",
+              "cornerRadius": 18,
+              "fill": "#0C0B0A",
+              "stroke": "#2A2622",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "padding": 7,
+              "children": [
+                {
+                  "id": "pbl-glass",
+                  "type": "frame",
+                  "name": "Glass",
+                  "width": 1600,
+                  "height": 900,
+                  "cornerRadius": 14,
+                  "clip": true,
+                  "layout": "none",
+                  "fill": "#000000",
+                  "children": [
+                    {
+                      "id": "pbl-video",
+                      "type": "rectangle",
+                      "name": "Video",
+                      "x": 0,
+                      "y": 0,
+                      "width": 1600,
+                      "height": 900,
+                      "fill": {
+                        "type": "gradient",
+                        "gradientType": "radial",
+                        "center": {
+                          "x": 0.48,
+                          "y": 0.44
+                        },
+                        "size": {
+                          "width": 0.9,
+                          "height": 0.9
+                        },
+                        "colors": [
+                          {
+                            "color": "#466078",
+                            "position": 0
+                          },
+                          {
+                            "color": "#172333",
+                            "position": 1
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "pbl-video-icon",
+                      "type": "icon",
+                      "library": "Material Symbols Rounded",
+                      "icon": "smart_display",
+                      "x": 696.0,
+                      "y": 346.0,
+                      "width": 208,
+                      "height": 208,
+                      "weight": 500,
+                      "fill": "#F5F2EA88"
+                    },
+                    {
+                      "id": "pbl-video-label",
+                      "type": "text",
+                      "content": "PLAYER AREA",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "700",
+                      "lineHeight": 1.2,
+                      "fill": "#FFFFFF55",
+                      "x": 650.0,
+                      "y": 836,
+                      "width": 300,
+                      "textGrowth": "fixed-width",
+                      "textAlign": "center"
+                    },
+                    {
+                      "id": "pbl-vignette",
+                      "type": "rectangle",
+                      "name": "Tube vignette",
+                      "x": 0,
+                      "y": 0,
+                      "width": 1600,
+                      "height": 900,
+                      "fill": {
+                        "type": "gradient",
+                        "gradientType": "radial",
+                        "size": {
+                          "width": 1.36,
+                          "height": 1.36
+                        },
+                        "colors": [
+                          {
+                            "color": "#00000000",
+                            "position": 0.52
+                          },
+                          {
+                            "color": "#0000008C",
+                            "position": 1
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "pbl-glint",
+                      "type": "rectangle",
+                      "name": "Tube glint",
+                      "x": 0,
+                      "y": 0,
+                      "width": 1600,
+                      "height": 900,
+                      "fill": {
+                        "type": "gradient",
+                        "gradientType": "radial",
+                        "center": {
+                          "x": 0.24,
+                          "y": 0.16
+                        },
+                        "size": {
+                          "width": 0.92,
+                          "height": 0.92
+                        },
+                        "colors": [
+                          {
+                            "color": "#FFFFFF29",
+                            "position": 0
+                          },
+                          {
+                            "color": "#FFFFFF00",
+                            "position": 1
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "pbl-chin",
+              "type": "frame",
+              "name": "Chin",
+              "width": "fill_container",
+              "height": 56,
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "pbl-ch",
+                  "type": "frame",
+                  "name": "Channel",
+                  "gap": 8,
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "id": "pbl-ch-k",
+                      "type": "text",
+                      "content": "CH",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700",
+                      "lineHeight": 1.2,
+                      "fill": "#F8C65D",
+                      "letterSpacing": 1.5
+                    },
+                    {
+                      "id": "pbl-ch-n",
+                      "type": "text",
+                      "content": "02",
+                      "fontFamily": "Roboto Mono",
+                      "fontSize": 32,
+                      "fontWeight": "700",
+                      "lineHeight": 1.2,
+                      "fill": "#F5F2EA"
+                    }
+                  ]
+                },
+                {
+                  "id": "pbl-settings",
+                  "type": "frame",
+                  "name": "Parent settings",
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "cornerRadius": 12,
+                  "children": [
+                    {
+                      "id": "pbl-settings-label",
+                      "type": "text",
+                      "content": "Parent settings",
+                      "fontFamily": "Inter",
+                      "fontSize": 20,
+                      "fontWeight": "600",
+                      "lineHeight": 1.2,
+                      "fill": "#94A3B8"
+                    }
+                  ]
+                },
+                {
+                  "id": "pbl-led",
+                  "type": "frame",
+                  "name": "Time left",
+                  "layout": "vertical",
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "id": "pbl-led-num",
+                      "type": "text",
+                      "content": "0:42",
+                      "fontFamily": "Roboto Mono",
+                      "fontSize": 26,
+                      "fontWeight": "700",
+                      "lineHeight": 1.2,
+                      "fill": "#0A101C",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "id": "pbl-led-cap",
+                      "type": "text",
+                      "content": "LEFT",
+                      "fontFamily": "Inter",
+                      "fontSize": 11,
+                      "fontWeight": "700",
+                      "lineHeight": 1.2,
+                      "fill": "#0A101C",
+                      "letterSpacing": 1.5
+                    }
+                  ],
+                  "fill": "#F8C65D",
+                  "cornerRadius": 10
+                }
+              ]
+            }
+          ]
         }
       ]
     },
