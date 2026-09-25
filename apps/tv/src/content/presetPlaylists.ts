@@ -66,6 +66,42 @@ export const PRESET_PLAYLISTS: readonly PresetItem[] = [
     url: "https://www.youtube.com/watch?v=5gZOYKHXwyQ",
     seedVideoIds: ["5gZOYKHXwyQ"],
   },
+  {
+    id: "7FWmHMT2Aag",
+    kind: "Video",
+    title: "Dora the Explorer",
+    description: "Dora full episodes marathon — 2 hours",
+    thumbnailUrl: "https://i.ytimg.com/vi/7FWmHMT2Aag/hqdefault.jpg",
+    url: "https://www.youtube.com/watch?v=7FWmHMT2Aag",
+    seedVideoIds: ["7FWmHMT2Aag"],
+  },
+  {
+    id: "JmFiRwntHwc",
+    kind: "Video",
+    title: "The New Adventures of Winnie the Pooh",
+    description: "Full episode marathon",
+    thumbnailUrl: "https://i.ytimg.com/vi/JmFiRwntHwc/hqdefault.jpg",
+    url: "https://www.youtube.com/watch?v=JmFiRwntHwc",
+    seedVideoIds: ["JmFiRwntHwc"],
+  },
+  {
+    id: "vFNeVBjWiQk",
+    kind: "Video",
+    title: "Letters with Pooh",
+    description: "Learn the alphabet with Winnie the Pooh",
+    thumbnailUrl: "https://i.ytimg.com/vi/vFNeVBjWiQk/hqdefault.jpg",
+    url: "https://www.youtube.com/watch?v=vFNeVBjWiQk",
+    seedVideoIds: ["vFNeVBjWiQk"],
+  },
+  {
+    id: "KPCBnO9nWCk",
+    kind: "Video",
+    title: "Postman Pat",
+    description: "A Day at the Seaside — 1 hour of full episodes",
+    thumbnailUrl: "https://i.ytimg.com/vi/KPCBnO9nWCk/hqdefault.jpg",
+    url: "https://www.youtube.com/watch?v=KPCBnO9nWCk",
+    seedVideoIds: ["KPCBnO9nWCk"],
+  },
 ];
 
 export function seedVideoIdsFor(entryId: string): readonly string[] {
