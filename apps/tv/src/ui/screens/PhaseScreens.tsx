@@ -464,7 +464,7 @@ export function PlayingShell({
   settingsOpen,
   onHoldPosition,
 }: PlayingProps) {
-  const { s } = useLayout();
+  const { s, width, height, safeY } = useLayout();
   const last60 = snapshot.remainingMs <= 60_000;
   const watchFraction = Math.max(
     0,
@@ -493,6 +493,13 @@ export function PlayingShell({
         : { width: next.width, height: next.height },
     );
   }, [glassH]);
+  // Only grows, so the chin (and the bezel sized from it) holds still when the
+  // settings overlay swaps the link for the shorter wordmark.
+  const [chinH, setChinH] = useState(0);
+  const onChinLayout = useCallback((event: LayoutChangeEvent) => {
+    const next = Math.ceil(event.nativeEvent.layout.height);
+    setChinH((prev) => (next > prev ? next : prev));
+  }, []);
 
   const settingsOpenRef = useRef(settingsOpen);
   settingsOpenRef.current = settingsOpen;
@@ -740,6 +747,21 @@ export function PlayingShell({
   const bezelRadius = s(28);
   // The band under the chin is the bezel's thinnest; the strip fits inside it.
   const rim = s(12);
+  const bezelPadX = s(18);
+  const bezelPadTop = s(18);
+  const bezelGap = s(12);
+  const lipPad = s(6);
+  const chinMinH = Math.max(s(56), chinH);
+  // Everything around the 16:9 glass: padding, gap, chin, and the 1px
+  // bezel and lip borders on each edge.
+  const borders = 2 * (styles.bezel.borderWidth + styles.lip.borderWidth);
+  const chromeX = borders + 2 * (bezelPadX + lipPad);
+  const chromeY =
+    borders + bezelPadTop + 2 * lipPad + bezelGap + chinMinH + rim;
+  // 86% wide unless that pushes the set into the TV-safe margin top and
+  // bottom; then the widest bezel whose glass still clears it.
+  const fitWidth = ((height - 2 * safeY - chromeY) * 16) / 9 + chromeX;
+  const bezelWidth = Math.min(width * 0.86, fitWidth);
   const channelLabel = activeChannel
     ? formatChannelNumber(activeChannel.number)
     : null;
@@ -772,11 +794,12 @@ export function PlayingShell({
         style={[
           styles.bezel,
           {
+            width: bezelWidth,
             borderRadius: bezelRadius,
-            paddingHorizontal: s(18),
-            paddingTop: s(18),
+            paddingHorizontal: bezelPadX,
+            paddingTop: bezelPadTop,
             paddingBottom: rim,
-            gap: s(12),
+            gap: bezelGap,
           },
         ]}
       >
@@ -790,7 +813,7 @@ export function PlayingShell({
         <View
           style={[
             styles.lip,
-            { borderRadius: s(18), padding: s(6) },
+            { borderRadius: s(18), padding: lipPad },
           ]}
         >
           <View
@@ -958,7 +981,10 @@ export function PlayingShell({
             ) : null}
           </View>
         </View>
-        <View style={[styles.chin, { minHeight: s(56) }]}>
+        <View
+          style={[styles.chin, { minHeight: chinMinH }]}
+          onLayout={onChinLayout}
+        >
           <View style={[styles.chRead, { gap: s(8) }]}>
             {channelLabel ? (
               <>
@@ -1101,7 +1127,6 @@ const styles = StyleSheet.create({
   },
   keySink: { position: "absolute", width: 1, height: 1, opacity: 0 },
   bezel: {
-    width: "86%",
     backgroundColor: TUBE.bezel,
     borderWidth: 1,
     borderColor: TUBE.line,
