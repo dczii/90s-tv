@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import Constants from "expo-constants";
 import { ENFORCEMENT_NOTE, type TimerSnapshot } from "@littleplay/core";
 import { DurationStepper } from "../components/DurationStepper";
 import { TvButton } from "../components/TvButton";
@@ -14,6 +15,14 @@ type Props = {
   onManageContent: () => void;
   onClose: () => void;
 };
+
+/** app.json version and Android versionCode, e.g. "1.2.0 (3)". */
+function appVersionLabel(): string {
+  const config = Constants.expoConfig;
+  if (!config?.version) return "Unknown";
+  const build = config.android?.versionCode;
+  return build == null ? config.version : `${config.version} (${build})`;
+}
 
 function formatRemaining(ms: number): string {
   const totalSec = Math.max(0, Math.ceil(ms / 1000));
@@ -161,6 +170,15 @@ export function ParentSettingsScreen({
                 value="App catalog"
                 icon="▶"
                 iconColor={colors.offWhite}
+                s={s}
+              />
+              <Divider />
+              <SettingsRow
+                label="App version"
+                value={appVersionLabel()}
+                icon="ⓘ"
+                mutedValue
+                iconColor={colors.muted}
                 s={s}
               />
             </>
