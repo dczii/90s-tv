@@ -19,6 +19,9 @@ importers:
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
+      companion-server:
+        specifier: file:./modules/companion-server
+        version: file:apps/tv/modules/companion-server(expo@57.0.22)(react-native-tvos@0.86.2-0)(react@19.2.3)
       device-time:
         specifier: file:./modules/device-time
         version: file:apps/tv/modules/device-time(expo@57.0.22)(react-native-tvos@0.86.2-0)(react@19.2.3)
@@ -1499,6 +1502,13 @@ packages:
   commander@7.2.0:
     resolution: {integrity: sha512-QrWXB+ZQSVPmIWIhtEO9H+gwHaMGYiF5ChvoJ+K9ZGHG/sVsa6yiesAD1GC/x46sET00Xlwo1u49RVVVzvcSkw==}
     engines: {node: '>= 10'}
+
+  companion-server@file:apps/tv/modules/companion-server:
+    resolution: {directory: apps/tv/modules/companion-server, type: directory}
+    peerDependencies:
+      expo: '*'
+      react: '*'
+      react-native: '*'
 
   compressible@2.0.18:
     resolution: {integrity: sha512-AF3r7P5dWxL8MxyITRMlORQNaOA2IkAFaTr4k7BUumjPtRpGDTZpl0Pb1XCO6JeDCBdp126Cgs9sMxqSjgYyRg==}
@@ -4909,6 +4919,12 @@ snapshots:
   commander@2.20.3: {}
 
   commander@7.2.0: {}
+
+  companion-server@file:apps/tv/modules/companion-server(expo@57.0.22)(react-native-tvos@0.86.2-0)(react@19.2.3):
+    dependencies:
+      expo: 57.0.22(@babel/core@7.29.7)(@expo/dom-webview@57.0.1)(react-native-tvos@0.86.2-0)(react-native-worklets@0.10.1(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(react-native-tvos@0.86.2-0)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
+      react: 19.2.3
+      react-native: react-native-tvos@0.86.2-0(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.18)(react-native-tvos@0.86.2-0)(react@19.2.3)
 
   compressible@2.0.18:
     dependencies:

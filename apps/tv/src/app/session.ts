@@ -69,6 +69,10 @@ export type SessionApi = {
   finishWizard: () => void;
   onAllowlistSaved: (entries: AllowlistEntry[]) => void;
   onPlaylistsUpdated: (entries: AllowlistEntry[]) => void;
+  /** Allowlist changed outside a screen (phone remote); refresh only. */
+  onAllowlistChanged: (entries: AllowlistEntry[]) => void;
+  /** Engine snapshot right now, without waiting for the next render. */
+  currentSnapshot: () => TimerSnapshot | null;
 };
 
 export function useAppSession(): SessionApi {
@@ -217,6 +221,15 @@ export function useAppSession(): SessionApi {
     return null;
   }, [applyEvent]);
 
+  const currentSnapshot = useCallback((): TimerSnapshot | null => {
+    const session = sessionRef.current;
+    return session ? session.engine.snapshot(deviceTime()) : null;
+  }, []);
+
+  const onAllowlistChanged = useCallback((entries: AllowlistEntry[]) => {
+    setAllowlistEntries(entries);
+  }, []);
+
   const effectiveWizard: WizardStep =
     snapshot?.phase === "Setup"
       ? (wizardStep ?? "welcome")
@@ -262,5 +275,7 @@ export function useAppSession(): SessionApi {
       setAllowlistEntries(entries);
       setContentRoute(null);
     },
+    onAllowlistChanged,
+    currentSnapshot,
   };
 }

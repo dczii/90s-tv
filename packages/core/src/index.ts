@@ -69,3 +69,10 @@ export type {
   AllowlistCursor,
   ExpandedVideoId,
 } from "./allowlist/nextPlayable.js";
+export {
+  LINK_INPUT_MAX_CHARS,
+  canonicalYoutubeUrl,
+  extractYoutubeLink,
+  linkErrorMessage,
+  parseLinkInput,
+} from "./allowlist/linkIntake.js";

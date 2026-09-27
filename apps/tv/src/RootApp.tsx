@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { StatusBar } from "expo-status-bar";
 import { BackHandler, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut, useReducedMotion } from "react-native-reanimated";
@@ -20,6 +20,8 @@ import { colors } from "./theme/tokens";
 import { duration, EASE_OUT } from "./theme/motion";
 import { ScreenShell } from "./ui/components/ScreenChrome";
 import { ScreenFade } from "./ui/motion/ScreenFade";
+import { PRESET_PLAYLISTS } from "./content/presetPlaylists";
+import type { CompanionHostDeps } from "./companion/useCompanionServer";
 
 export default function RootApp() {
   const reducedMotion = useReducedMotion();
@@ -32,6 +34,22 @@ export default function RootApp() {
     player,
     confirmWatching: session.confirmWatching,
   });
+
+  const { allowlistRepo, changePolicy, currentSnapshot, onAllowlistChanged } =
+    session;
+  const companion = useMemo<CompanionHostDeps | undefined>(
+    () =>
+      allowlistRepo
+        ? {
+            allowlist: allowlistRepo,
+            presets: PRESET_PLAYLISTS,
+            snapshot: currentSnapshot,
+            changePolicy,
+            onEntriesChanged: onAllowlistChanged,
+          }
+        : undefined,
+    [allowlistRepo, changePolicy, currentSnapshot, onAllowlistChanged],
+  );
 
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -126,6 +144,7 @@ export default function RootApp() {
         onResetCycle={session.resetCycle}
         onManageContent={() => session.openChoose()}
         onClose={session.closeSettings}
+        companion={companion}
       />
     );
   } else if (session.wizardStep === "welcome") {
@@ -203,6 +222,7 @@ export default function RootApp() {
               onResetCycle={session.resetCycle}
               onManageContent={() => session.openChoose()}
               onClose={session.closeSettings}
+              companion={companion}
             />
           </Animated.View>
         ) : null}

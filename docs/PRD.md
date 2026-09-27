@@ -58,7 +58,9 @@ data, or changing the TV clock.
   one optional Google session for `youtube.readonly`.
 - No pause/rewind DVR of the watch clock. Pause is a player control inside
   `Playing`; elapsed watch time still advances.
-- No phone app, no Apple TV, no companion device.
+- No phone app and no Apple TV. The one companion surface is the **phone
+  remote** web page (see RN-D20): LAN-only, served by the TV only while
+  PIN-gated Parent settings shows its QR code. No cloud relay.
 - CRT shaders, ads stripping, and “make the iframe ad-free” are out.
 
 ---
@@ -349,7 +351,7 @@ Hardware loops use the legal grid. The short loop is **5 min watch /
 
 - Additional parent accounts or per-child profiles.
 - Device-wide restrictions (separate product; not this process).
-- Apple TV / phone companion.
+- Apple TV. Phone remote beyond the home network (cloud relay).
 - 24h soak of the timer (memory, WebView leaks) — recommended, not a §11
   box.
 

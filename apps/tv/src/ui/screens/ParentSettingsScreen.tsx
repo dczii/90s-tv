@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Constants from "expo-constants";
 import { ENFORCEMENT_NOTE, type TimerSnapshot } from "@littleplay/core";
 import { DurationStepper } from "../components/DurationStepper";
+import { PhoneRemotePanel } from "../components/PhoneRemotePanel";
 import { TvButton } from "../components/TvButton";
 import { ScreenHeader, ScreenShell } from "../components/ScreenChrome";
 import { colors, useLayout } from "../../theme/tokens";
+import type { CompanionHostDeps } from "../../companion/useCompanionServer";
 
 type Props = {
   snapshot: TimerSnapshot;
@@ -14,6 +16,8 @@ type Props = {
   onResetCycle: () => string | null;
   onManageContent: () => void;
   onClose: () => void;
+  /** Phone remote (Add from phone); omitted hides the row. */
+  companion?: CompanionHostDeps;
 };
 
 /** app.json version and Android versionCode, e.g. "1.2.0 (3)". */
@@ -38,6 +42,7 @@ export function ParentSettingsScreen({
   onResetCycle,
   onManageContent,
   onClose,
+  companion,
 }: Props) {
   const { s } = useLayout();
   const [watchMin, setWatchMin] = useState(
@@ -47,7 +52,17 @@ export function ParentSettingsScreen({
     Math.round(snapshot.policy.restDurationMs / 60_000),
   );
   const [editingPolicy, setEditingPolicy] = useState(false);
+  const [phonePanel, setPhonePanel] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The phone remote can change the policy while this screen is open.
+  const policyWatchMin = Math.round(snapshot.policy.watchDurationMs / 60_000);
+  const policyRestMin = Math.round(snapshot.policy.restDurationMs / 60_000);
+  useEffect(() => {
+    if (editingPolicy) return;
+    setWatchMin(policyWatchMin);
+    setRestMin(policyRestMin);
+  }, [editingPolicy, policyWatchMin, policyRestMin]);
 
   const remainingLabel =
     snapshot.phase === "Playing" || snapshot.phase === "Resting"
@@ -77,7 +92,12 @@ export function ParentSettingsScreen({
             },
           ]}
         >
-          {editingPolicy ? (
+          {phonePanel && companion ? (
+            <PhoneRemotePanel
+              deps={companion}
+              onBack={() => setPhonePanel(false)}
+            />
+          ) : editingPolicy ? (
             <View style={[styles.editBlock, { gap: s(14) }]}>
               <Text style={[styles.sectionLabel, { fontSize: s(16) }]}>
                 WATCH & BREAK
@@ -141,19 +161,10 @@ export function ParentSettingsScreen({
               >
                 CONTENT
               </Text>
-              <Pressable
+              <PressableRow
                 onPress={onManageContent}
-                style={({ focused }) => [
-                  styles.manageHit,
-                  {
-                    borderRadius: s(16),
-                    marginHorizontal: s(-8),
-                    paddingHorizontal: s(8),
-                  },
-                  focused && styles.manageFocused,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Manage allowed content"
+                label="Manage allowed content"
+                s={s}
               >
                 <SettingsRow
                   label="Manage allowed content"
@@ -163,8 +174,30 @@ export function ParentSettingsScreen({
                   iconColor={colors.offWhite}
                   s={s}
                 />
-              </Pressable>
+              </PressableRow>
               <Divider />
+              {companion ? (
+                <>
+                  <PressableRow
+                    onPress={() => {
+                      setEditingPolicy(false);
+                      setPhonePanel(true);
+                    }}
+                    label="Add from phone"
+                    s={s}
+                  >
+                    <SettingsRow
+                      label="Add from phone"
+                      value="Show QR code"
+                      icon="▦"
+                      mutedValue
+                      iconColor={colors.coral}
+                      s={s}
+                    />
+                  </PressableRow>
+                  <Divider />
+                </>
+              ) : null}
               <SettingsRow
                 label="Content source"
                 value="App catalog"
@@ -210,7 +243,10 @@ export function ParentSettingsScreen({
           <TvButton
             label="Edit timer policy"
             stretch
-            onPress={() => setEditingPolicy(true)}
+            onPress={() => {
+              setPhonePanel(false);
+              setEditingPolicy(true);
+            }}
             {...({ hasTVPreferredFocus: true } as object)}
           />
           <TvButton
@@ -229,6 +265,37 @@ export function ParentSettingsScreen({
         </View>
       </View>
     </ScreenShell>
+  );
+}
+
+function PressableRow({
+  onPress,
+  label,
+  s,
+  children,
+}: {
+  onPress: () => void;
+  label: string;
+  s: (n: number) => number;
+  children: ReactNode;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ focused }) => [
+        styles.manageHit,
+        {
+          borderRadius: s(16),
+          marginHorizontal: s(-8),
+          paddingHorizontal: s(8),
+        },
+        focused && styles.manageFocused,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      {children}
+    </Pressable>
   );
 }
 

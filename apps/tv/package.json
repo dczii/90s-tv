@@ -28,6 +28,7 @@
     "@littleplay/core": "workspace:*",
     "android-identity": "file:./modules/android-identity",
     "buffer": "^6.0.3",
+    "companion-server": "file:./modules/companion-server",
     "device-time": "file:./modules/device-time",
     "expo": "~57.0.13",
     "expo-build-properties": "~1.0.10",
