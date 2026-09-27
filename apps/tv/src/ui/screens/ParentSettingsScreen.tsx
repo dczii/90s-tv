@@ -7,7 +7,7 @@ import { PhoneRemotePanel } from "../components/PhoneRemotePanel";
 import { TvButton } from "../components/TvButton";
 import { ScreenHeader, ScreenShell } from "../components/ScreenChrome";
 import { colors, useLayout } from "../../theme/tokens";
-import type { CompanionHostDeps } from "../../companion/useCompanionServer";
+import type { PhoneRemote } from "../../companion/useCompanionServer";
 
 type Props = {
   snapshot: TimerSnapshot;
@@ -17,7 +17,11 @@ type Props = {
   onManageContent: () => void;
   onClose: () => void;
   /** Phone remote (Add from phone); omitted hides the row. */
-  companion?: CompanionHostDeps;
+  phoneRemote?: PhoneRemote & {
+    open: boolean;
+    onOpen: () => void;
+    onClose: () => void;
+  };
 };
 
 /** app.json version and Android versionCode, e.g. "1.2.0 (3)". */
@@ -42,7 +46,7 @@ export function ParentSettingsScreen({
   onResetCycle,
   onManageContent,
   onClose,
-  companion,
+  phoneRemote,
 }: Props) {
   const { s } = useLayout();
   const [watchMin, setWatchMin] = useState(
@@ -52,7 +56,6 @@ export function ParentSettingsScreen({
     Math.round(snapshot.policy.restDurationMs / 60_000),
   );
   const [editingPolicy, setEditingPolicy] = useState(false);
-  const [phonePanel, setPhonePanel] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // The phone remote can change the policy while this screen is open.
@@ -92,11 +95,8 @@ export function ParentSettingsScreen({
             },
           ]}
         >
-          {phonePanel && companion ? (
-            <PhoneRemotePanel
-              deps={companion}
-              onBack={() => setPhonePanel(false)}
-            />
+          {phoneRemote?.open ? (
+            <PhoneRemotePanel remote={phoneRemote} onBack={phoneRemote.onClose} />
           ) : editingPolicy ? (
             <View style={[styles.editBlock, { gap: s(14) }]}>
               <Text style={[styles.sectionLabel, { fontSize: s(16) }]}>
@@ -176,12 +176,12 @@ export function ParentSettingsScreen({
                 />
               </PressableRow>
               <Divider />
-              {companion ? (
+              {phoneRemote ? (
                 <>
                   <PressableRow
                     onPress={() => {
                       setEditingPolicy(false);
-                      setPhonePanel(true);
+                      phoneRemote.onOpen();
                     }}
                     label="Add from phone"
                     s={s}
@@ -244,7 +244,7 @@ export function ParentSettingsScreen({
             label="Edit timer policy"
             stretch
             onPress={() => {
-              setPhonePanel(false);
+              phoneRemote?.onClose();
               setEditingPolicy(true);
             }}
             {...({ hasTVPreferredFocus: true } as object)}

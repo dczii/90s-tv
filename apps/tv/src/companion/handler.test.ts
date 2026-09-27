@@ -54,6 +54,7 @@ function setup(opts: {
   entries?: AllowlistEntry[];
   lookup?: LinkLookup;
   policyError?: string | null;
+  playlistsSupported?: boolean;
 } = {}) {
   const sql = createAllowlistMemorySql();
   migrateAllowlistTables(sql);
@@ -69,6 +70,7 @@ function setup(opts: {
     token: TOKEN,
     allowlist: repo,
     presets: PRESETS,
+    playlistsSupported: opts.playlistsSupported ?? true,
     snapshot: () => snapshot,
     changePolicy: vi.fn((w: number, r: number) => {
       if (opts.policyError) return opts.policyError;
@@ -200,6 +202,20 @@ describe("links", () => {
     expect(repo.list().find((e) => e.id === "PLnew1")?.kind).toBe("Playlist");
   });
 
+  it("refuses pasted playlists when they can't be expanded", async () => {
+    const { deps, repo } = setup({ playlistsSupported: false });
+    const r = await call(
+      deps,
+      req("POST", "/api/links", { input: "https://www.youtube.com/playlist?list=PLnew1" }),
+    );
+    expect(r.res.status).toBe(422);
+    expect(r.data.message).toMatch(/single video/);
+    expect(repo.list()).toHaveLength(1);
+    // Catalog playlists still toggle on: they carry seed videos.
+    const show = await call(deps, req("POST", "/api/shows", { id: "PLfrank", selected: true }));
+    expect(show.res.status).toBe(200);
+  });
+
   it("falls back to a placeholder when YouTube can't be reached", async () => {
     const { deps, repo } = setup({ lookup: { kind: "unknown" } });
     await call(deps, req("POST", "/api/links", { input: "https://youtu.be/dQw4w9WgXcQ" }));
@@ -215,7 +231,7 @@ describe("links", () => {
     });
     const { res, data } = await call(deps, req("POST", "/api/links", { input: "https://youtu.be/dQw4w9WgXcQ" }));
     expect(res.status).toBe(422);
-    expect(data.message).toMatch(/doesn't allow/);
+    expect(data.message).toMatch(/can't play on the TV/);
     expect(repo.list()).toHaveLength(1);
   });
 

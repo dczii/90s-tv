@@ -18,6 +18,7 @@ import { lookupLink } from "./lookup";
 export const COMPANION_TTL_MS = 10 * 60_000;
 
 export type CompanionStatus =
+  | { kind: "idle" }
   | { kind: "starting" }
   | { kind: "running"; url: string; expiresAtMs: number }
   | { kind: "noNetwork" }
@@ -35,18 +36,35 @@ function newToken(): string {
   ).join("");
 }
 
+export type PhoneRemote = {
+  status: CompanionStatus;
+  activity: CompanionActivity[];
+  restart: () => void;
+};
+
 /**
- * Runs the phone remote server while mounted: fresh token per start, stops
- * on unmount or after COMPANION_TTL_MS. Requests always see the latest deps.
+ * Runs the phone remote server while `active`: fresh token per start, stops
+ * when inactive, on unmount, or after COMPANION_TTL_MS. Lives in RootApp so
+ * a phase change that remounts Parent settings doesn't kill the link.
+ * Requests always see the latest deps.
  */
-export function useCompanionServer(deps: CompanionHostDeps) {
+export function useCompanionServer(
+  deps: CompanionHostDeps | undefined,
+  active: boolean,
+): PhoneRemote {
   const depsRef = useRef(deps);
   depsRef.current = deps;
-  const [status, setStatus] = useState<CompanionStatus>({ kind: "starting" });
+  const [status, setStatus] = useState<CompanionStatus>({ kind: "idle" });
   const [activity, setActivity] = useState<CompanionActivity[]>([]);
   const [generation, setGeneration] = useState(0);
 
+  const running = active && deps !== undefined;
+
   useEffect(() => {
+    if (!running) {
+      setStatus({ kind: "idle" });
+      return;
+    }
     let cancelled = false;
     const token = newToken();
     setStatus({ kind: "starting" });
@@ -62,8 +80,13 @@ export function useCompanionServer(deps: CompanionHostDeps) {
     };
 
     const requestSub = addCompanionRequestListener((req) => {
+      const current = depsRef.current;
+      if (!current) {
+        respondCompanion(req.id, 503, "text/plain; charset=utf-8", "Not ready", {});
+        return;
+      }
       void handleCompanionRequest(req, {
-        ...depsRef.current,
+        ...current,
         token,
         lookup: (parsed) => lookupLink(parsed),
         now: () => Date.now(),
@@ -110,7 +133,7 @@ export function useCompanionServer(deps: CompanionHostDeps) {
       stoppedSub.remove();
       stopCompanionServer(token);
     };
-  }, [generation]);
+  }, [generation, running]);
 
   const restart = useCallback(() => setGeneration((g) => g + 1), []);
 

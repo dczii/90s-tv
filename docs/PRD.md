@@ -60,7 +60,7 @@ data, or changing the TV clock.
   `Playing`; elapsed watch time still advances.
 - No phone app and no Apple TV. The one companion surface is the **phone
   remote** web page (see RN-D20): LAN-only, served by the TV only while
-  PIN-gated Parent settings shows its QR code. No cloud relay.
+  Parent settings shows its QR code. No cloud relay.
 - CRT shaders, ads stripping, and “make the iframe ad-free” are out.
 
 ---

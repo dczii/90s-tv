@@ -234,7 +234,7 @@ Do not rewrite them here. `YT-D8`–`YT-D29` remain law for later steps.
 | **RN-D17** | Tokens | `expo-secure-store` only. Disconnect keeps allowlist. |
 | **RN-D18** | Identity | Native `android-identity` for package + cert SHA-1 on API-key calls. |
 | **RN-D19** | Catalog DB | Same sqlite file as timer `kv`. New tables; not a second database. |
-| **RN-D20** | Phone remote | Parent settings → Add from phone starts `companion-server` (Kotlin, LAN IPv4 only, LAN peers only, rate-limited, size-capped) and shows a QR code `http://<lan-ip>:<port>/?t=<128-bit token>`. New token per open; stops on leaving the panel or after 10 min. Every route needs the token; all logic lives in JS (`src/companion/handler.ts`): shows, pasted links (oEmbed title, no API key), remove (never the last entry), and watch/break minutes via `changePolicy`. No cloud relay. |
+| **RN-D20** | Phone remote | Parent settings → Add from phone starts `companion-server` (Kotlin, LAN IPv4 only, LAN peers only, rate-limited, size-capped) and shows a QR code `http://<lan-ip>:<port>/?t=<128-bit token>`. New token per open; stops on leaving the panel or after 10 min. Every route needs the token; all logic lives in JS (`src/companion/handler.ts`): shows, pasted links (oEmbed title, no API key; pasted playlists only when an API key can expand them), remove (never the last entry), and watch/break minutes via `changePolicy`. The server runs from RootApp so a phase change that remounts settings keeps the link. Parent settings has no PIN today, so anyone at the TV can open the QR code. No cloud relay. |
 
 ### Pinned versions (scaffold time)
 

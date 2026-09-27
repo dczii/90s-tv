@@ -51,6 +51,11 @@ export type CompanionDeps = {
     remove(id: string): void;
   };
   presets: readonly PresetItem[];
+  /**
+   * Pasted playlists need the Data API to list their videos. Without a key
+   * only catalog playlists (which carry seed videos) can play.
+   */
+  playlistsSupported: boolean;
   snapshot(): TimerSnapshot | null;
   /** Same contract as the TV settings screen: error text or null. */
   changePolicy(watchMin: number, restMin: number): string | null;
@@ -153,6 +158,7 @@ export function companionState(deps: CompanionDeps) {
   const snap = deps.snapshot();
   return {
     ok: true as const,
+    playlistsSupported: deps.playlistsSupported,
     timer: {
       watchMin: snap ? minutes(snap.policy.watchDurationMs) : null,
       restMin: snap ? minutes(snap.policy.restDurationMs) : null,
@@ -212,6 +218,12 @@ async function addLink(
   }
   if (!parsed.ok) return fail(400, parsed.message);
   const { id, kind } = parsed.value;
+  if (kind === "Playlist" && !deps.playlistsSupported) {
+    return fail(
+      422,
+      "Playlist links can't play on this TV yet. Paste a link to a single video instead.",
+    );
+  }
 
   const existing = deps.allowlist.list().find((e) => e.id === id);
   if (existing) {

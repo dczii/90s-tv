@@ -2,15 +2,14 @@ import { StyleSheet, Text, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { TvButton } from "./TvButton";
 import { colors, useLayout } from "../../theme/tokens";
-import {
-  useCompanionServer,
-  type CompanionHostDeps,
-  type CompanionStatus,
+import type {
+  CompanionStatus,
+  PhoneRemote,
 } from "../../companion/useCompanionServer";
 import type { CompanionActivity } from "../../companion/handler";
 
 type Props = {
-  deps: CompanionHostDeps;
+  remote: PhoneRemote;
   onBack: () => void;
 };
 
@@ -33,12 +32,12 @@ function minutesLeft(status: CompanionStatus): number {
 }
 
 /**
- * Parent settings → Add from phone. Shows a QR code for the phone remote
- * page and runs the LAN server only while this panel is mounted.
+ * Parent settings → Add from phone. Shows the QR code for the phone remote
+ * page; RootApp runs the server while this panel is open.
  */
-export function PhoneRemotePanel({ deps, onBack }: Props) {
+export function PhoneRemotePanel({ remote, onBack }: Props) {
   const { s } = useLayout();
-  const { status, activity, restart } = useCompanionServer(deps);
+  const { status, activity, restart } = remote;
   const qrSize = s(300);
   const running = status.kind === "running";
 

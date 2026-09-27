@@ -145,7 +145,7 @@ const PAGE = `<!doctype html>
 
   <section aria-labelledby="links-h">
     <h2 id="links-h">YouTube links</h2>
-    <p class="sub">Paste a video or playlist link from the YouTube app.</p>
+    <p id="linksSub" class="sub">Paste a video or playlist link from the YouTube app.</p>
     <form id="addForm" autocomplete="off" novalidate>
       <input id="link" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://youtu.be/…" aria-label="YouTube link" enterkeyhint="go">
       <button id="addBtn" class="primary" type="submit">Add</button>
@@ -302,6 +302,9 @@ const PAGE = `<!doctype html>
       list.appendChild(li);
     });
     $("noLinks").hidden = state.links.length > 0;
+    $("linksSub").textContent = state.playlistsSupported
+      ? "Paste a video or playlist link from the YouTube app."
+      : "Paste a video link from the YouTube app.";
   }
 
   function render(data) {

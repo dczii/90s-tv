@@ -11,8 +11,9 @@ import java.net.Socket
 import java.net.SocketException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
@@ -46,15 +47,19 @@ class CompanionHttpServer(
   private val onStopped: () -> Unit,
 ) {
   private val pending = ConcurrentHashMap<String, Pair<CountDownLatch, Array<HttpReply?>>>()
-  private val workers: ExecutorService = Executors.newFixedThreadPool(MAX_WORKERS)
+  // Bounded: a flood of idle sockets gets 503s instead of queueing forever.
+  private val workers = ThreadPoolExecutor(
+    MAX_WORKERS, MAX_WORKERS, 0L, TimeUnit.MILLISECONDS,
+    ArrayBlockingQueue(MAX_QUEUED),
+  )
   private var socket: ServerSocket? = null
   private var acceptThread: Thread? = null
   @Volatile private var running = false
-  @Volatile private var deadline = 0L
+  /** elapsed-time deadline (nanoTime): immune to wall-clock changes. */
+  @Volatile private var deadlineNanos = 0L
 
-  // Global token bucket: phones are one or two people, so this is generous.
-  private var bucket = RATE_BURST.toDouble()
-  private var bucketAt = System.nanoTime()
+  /** Per-peer token buckets: one noisy device can't starve the parent's phone. */
+  private val buckets = HashMap<InetAddress, DoubleArray>()
 
   val port: Int get() = socket?.localPort ?: -1
 
@@ -78,7 +83,7 @@ class CompanionHttpServer(
     socket = server
     server.soTimeout = ACCEPT_POLL_MS
     running = true
-    deadline = System.currentTimeMillis() + ttlMs
+    deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(ttlMs)
     acceptThread = Thread({ acceptLoop(server) }, "companion-accept").apply {
       isDaemon = true
       start()
@@ -92,10 +97,12 @@ class CompanionHttpServer(
     running = false
     try { socket?.close() } catch (_: Exception) {}
     socket = null
-    workers.shutdownNow()
+    // Release waiting workers first so they answer 504 instead of resetting.
     for ((_, entry) in pending) entry.first.countDown()
-    pending.clear()
-    if (notify) onStopped()
+    workers.shutdown()
+    if (notify) {
+      try { onStopped() } catch (_: Exception) {}
+    }
   }
 
   fun complete(id: String, reply: HttpReply) {
@@ -106,7 +113,7 @@ class CompanionHttpServer(
 
   private fun acceptLoop(server: ServerSocket) {
     while (running) {
-      if (System.currentTimeMillis() > deadline) {
+      if (System.nanoTime() - deadlineNanos > 0) {
         stop()
         return
       }
@@ -120,6 +127,12 @@ class CompanionHttpServer(
       }
       try {
         workers.execute { serve(client) }
+      } catch (_: RejectedExecutionException) {
+        try {
+          client.soTimeout = READ_TIMEOUT_MS
+          write(client.getOutputStream(), text(503, "The TV is busy. Try again."))
+        } catch (_: Exception) {}
+        closeQuietly(client)
       } catch (_: Exception) {
         closeQuietly(client)
       }
@@ -130,13 +143,16 @@ class CompanionHttpServer(
     addr != null && (addr.isSiteLocalAddress || addr.isLinkLocalAddress || addr.isLoopbackAddress)
 
   @Synchronized
-  private fun takeToken(): Boolean {
+  private fun takeToken(peer: InetAddress): Boolean {
     val now = System.nanoTime()
-    val refill = (now - bucketAt) / 1e9 * RATE_PER_SEC
-    bucket = minOf(RATE_BURST.toDouble(), bucket + refill)
-    bucketAt = now
-    if (bucket < 1.0) return false
-    bucket -= 1.0
+    if (buckets.size > MAX_PEERS && peer !in buckets) buckets.clear()
+    // [tokens, lastRefillNanos]
+    val b = buckets.getOrPut(peer) { doubleArrayOf(RATE_BURST.toDouble(), now.toDouble()) }
+    val refill = (now - b[1]) / 1e9 * RATE_PER_SEC
+    b[0] = minOf(RATE_BURST.toDouble(), b[0] + refill)
+    b[1] = now.toDouble()
+    if (b[0] < 1.0) return false
+    b[0] -= 1.0
     return true
   }
 
@@ -146,12 +162,14 @@ class CompanionHttpServer(
         s.soTimeout = READ_TIMEOUT_MS
         val out = s.getOutputStream()
         if (!allowPeer(s.inetAddress)) return
-        if (!takeToken()) {
+        if (!takeToken(s.inetAddress)) {
           write(out, text(429, "Too many requests. Slow down."))
           return
         }
         val input = BufferedInputStream(s.getInputStream())
-        val head = readHead(input) ?: run {
+        // Whole-request deadline; soTimeout alone lets a slow drip hold a worker.
+        val readBy = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(REQUEST_READ_MS)
+        val head = readHead(input, readBy) ?: run {
           write(out, text(400, "Bad request"))
           return
         }
@@ -178,7 +196,7 @@ class CompanionHttpServer(
           write(out, text(413, "Too large"))
           return
         }
-        val body = readBody(input, length) ?: run {
+        val body = readBody(input, length, readBy) ?: run {
           write(out, text(400, "Bad request"))
           return
         }
@@ -192,7 +210,7 @@ class CompanionHttpServer(
         pending[id] = latch to slot
         try {
           onRequest(PendingRequest(id, method, path, query, body))
-          latch.await(JS_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+          if (running) latch.await(JS_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         } finally {
           pending.remove(id)
         }
@@ -203,11 +221,12 @@ class CompanionHttpServer(
     }
   }
 
-  private fun readHead(input: InputStream): String? {
+  private fun readHead(input: InputStream, readBy: Long): String? {
     val buf = ByteArrayOutputStream()
     var matched = 0
     val end = byteArrayOf('\r'.code.toByte(), '\n'.code.toByte(), '\r'.code.toByte(), '\n'.code.toByte())
     while (buf.size() < MAX_HEAD_BYTES) {
+      if (System.nanoTime() - readBy > 0) return null
       val b = input.read()
       if (b < 0) return null
       buf.write(b)
@@ -220,10 +239,11 @@ class CompanionHttpServer(
     return null
   }
 
-  private fun readBody(input: InputStream, length: Int): String? {
+  private fun readBody(input: InputStream, length: Int, readBy: Long): String? {
     val bytes = ByteArray(length)
     var read = 0
     while (read < length) {
+      if (System.nanoTime() - readBy > 0) return null
       val n = input.read(bytes, read, length - read)
       if (n < 0) return null
       read += n
@@ -265,6 +285,7 @@ class CompanionHttpServer(
     413 -> "Payload Too Large"
     422 -> "Unprocessable Entity"
     429 -> "Too Many Requests"
+    503 -> "Service Unavailable"
     504 -> "Gateway Timeout"
     else -> if (status >= 500) "Server Error" else "OK"
   }
@@ -277,6 +298,9 @@ class CompanionHttpServer(
     /** Unique across server instances so a late reply can't hit a new run. */
     private val ids = AtomicLong(0)
     private const val MAX_WORKERS = 4
+    private const val MAX_QUEUED = 8
+    private const val MAX_PEERS = 64
+    private const val REQUEST_READ_MS = 5_000L
     private const val BACKLOG = 16
     private const val ACCEPT_POLL_MS = 1000
     private const val READ_TIMEOUT_MS = 10_000

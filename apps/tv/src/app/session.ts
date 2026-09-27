@@ -50,6 +50,8 @@ export type SessionApi = {
   bootError: string | null;
   wizardStep: WizardStep;
   showSettings: boolean;
+  /** Parent settings → Add from phone is showing (server running). */
+  phoneRemoteOpen: boolean;
   contentRoute: ContentRoute;
   allowlistEntries: AllowlistEntry[];
   allowlistRepo: AllowlistRepository | null;
@@ -61,6 +63,8 @@ export type SessionApi = {
   resetCycle: () => string | null;
   openSettings: () => void;
   closeSettings: () => void;
+  openPhoneRemote: () => void;
+  closePhoneRemote: () => void;
   startSetup: () => void;
   openChoose: () => void;
   closeContent: () => void;
@@ -81,6 +85,7 @@ export function useAppSession(): SessionApi {
   const [bootError, setBootError] = useState<string | null>(null);
   const [wizardStep, setWizardStep] = useState<WizardStep>("welcome");
   const [showSettings, setShowSettings] = useState(false);
+  const [phoneRemoteOpen, setPhoneRemoteOpen] = useState(false);
   const [contentRoute, setContentRoute] = useState<ContentRoute>(null);
   const [allowlistEntries, setAllowlistEntries] = useState<AllowlistEntry[]>(
     [],
@@ -242,6 +247,7 @@ export function useAppSession(): SessionApi {
     bootError,
     wizardStep: effectiveWizard,
     showSettings,
+    phoneRemoteOpen: showSettings && phoneRemoteOpen,
     contentRoute,
     allowlistEntries,
     allowlistRepo,
@@ -257,8 +263,11 @@ export function useAppSession(): SessionApi {
     },
     closeSettings: () => {
       setShowSettings(false);
+      setPhoneRemoteOpen(false);
       setContentRoute(null);
     },
+    openPhoneRemote: () => setPhoneRemoteOpen(true),
+    closePhoneRemote: () => setPhoneRemoteOpen(false),
     startSetup: () => setWizardStep("timerSetup"),
     openChoose: () => setContentRoute("choose"),
     closeContent: () => setContentRoute(null),

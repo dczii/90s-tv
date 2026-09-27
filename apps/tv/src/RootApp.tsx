@@ -21,7 +21,11 @@ import { duration, EASE_OUT } from "./theme/motion";
 import { ScreenShell } from "./ui/components/ScreenChrome";
 import { ScreenFade } from "./ui/motion/ScreenFade";
 import { PRESET_PLAYLISTS } from "./content/presetPlaylists";
-import type { CompanionHostDeps } from "./companion/useCompanionServer";
+import {
+  useCompanionServer,
+  type CompanionHostDeps,
+} from "./companion/useCompanionServer";
+import { youtubeConfig } from "./youtube/client";
 
 export default function RootApp() {
   const reducedMotion = useReducedMotion();
@@ -43,6 +47,7 @@ export default function RootApp() {
         ? {
             allowlist: allowlistRepo,
             presets: PRESET_PLAYLISTS,
+            playlistsSupported: Boolean(youtubeConfig().apiKey),
             snapshot: currentSnapshot,
             changePolicy,
             onEntriesChanged: onAllowlistChanged,
@@ -50,11 +55,24 @@ export default function RootApp() {
         : undefined,
     [allowlistRepo, changePolicy, currentSnapshot, onAllowlistChanged],
   );
+  const remote = useCompanionServer(companion, session.phoneRemoteOpen);
+  const phoneRemote = companion
+    ? {
+        ...remote,
+        open: session.phoneRemoteOpen,
+        onOpen: session.openPhoneRemote,
+        onClose: session.closePhoneRemote,
+      }
+    : undefined;
 
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       if (session.contentRoute) {
         session.closeContent();
+        return true;
+      }
+      if (session.phoneRemoteOpen) {
+        session.closePhoneRemote();
         return true;
       }
       if (session.showSettings) {
@@ -76,6 +94,8 @@ export default function RootApp() {
     return () => sub.remove();
   }, [
     session.showSettings,
+    session.phoneRemoteOpen,
+    session.closePhoneRemote,
     session.contentRoute,
     session.snapshot?.phase,
     session.closeSettings,
@@ -144,7 +164,7 @@ export default function RootApp() {
         onResetCycle={session.resetCycle}
         onManageContent={() => session.openChoose()}
         onClose={session.closeSettings}
-        companion={companion}
+        phoneRemote={phoneRemote}
       />
     );
   } else if (session.wizardStep === "welcome") {
@@ -222,7 +242,7 @@ export default function RootApp() {
               onResetCycle={session.resetCycle}
               onManageContent={() => session.openChoose()}
               onClose={session.closeSettings}
-              companion={companion}
+              phoneRemote={phoneRemote}
             />
           </Animated.View>
         ) : null}

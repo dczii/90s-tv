@@ -26,7 +26,7 @@ export function linkErrorMessage(error: AllowlistError): string {
     case "UnsupportedHost":
       return "Only YouTube video and playlist links work. Channel links aren't supported.";
     case "NotEmbeddable":
-      return "The owner of this video doesn't allow it to play in other apps.";
+      return "This video can't play on the TV. It may be private, or its owner blocks other apps.";
     case "PrivateBlocked":
       return "This video is private.";
     case "AgeRestricted":

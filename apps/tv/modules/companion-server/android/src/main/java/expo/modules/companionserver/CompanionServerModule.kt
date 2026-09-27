@@ -67,16 +67,10 @@ class CompanionServerModule : Module() {
       preferredPorts = PREFERRED_PORTS,
       ttlMs = ttlMs,
       onRequest = { req ->
-        sendEvent(
-          "onRequest",
-          mapOf(
-            "id" to req.id,
-            "method" to req.method,
-            "path" to req.path,
-            "query" to req.query,
-            "body" to req.body,
-          ),
-        )
+        // Never let an emitter failure escape onto a server thread.
+        try {
+          emitRequest(req)
+        } catch (_: Exception) {}
       },
       onStopped = { sendEvent("onStopped", emptyMap<String, Any>()) },
     )
@@ -84,6 +78,19 @@ class CompanionServerModule : Module() {
     server = s
     serverSession = session
     return mapOf("host" to address.hostAddress, "port" to s.port)
+  }
+
+  private fun emitRequest(req: PendingRequest) {
+    sendEvent(
+      "onRequest",
+      mapOf(
+        "id" to req.id,
+        "method" to req.method,
+        "path" to req.path,
+        "query" to req.query,
+        "body" to req.body,
+      ),
+    )
   }
 
   /** Stopping on purpose: JS already knows, so skip the onStopped echo. */
