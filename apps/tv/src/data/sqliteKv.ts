@@ -21,6 +21,8 @@ export const KV_KEYS = {
   deadlineBootCount: "deadline_boot_count",
   allowlistCursorEntryId: "allowlist_cursor_entry_id",
   allowlistCursorIndex: "allowlist_cursor_index",
+  channelSpots: "channel_spots",
+  phoneLinkToken: "phone_link_token",
 } as const;
 
 export type KvKey = (typeof KV_KEYS)[keyof typeof KV_KEYS];

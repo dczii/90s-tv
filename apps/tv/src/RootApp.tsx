@@ -34,6 +34,13 @@ export default function RootApp() {
   });
 
   useEffect(() => {
+    session.bindPhonePlayback({
+      currentId: playback.currentChannelId,
+      tune: playback.tuneChannel,
+    });
+  }, [session.bindPhonePlayback, playback.currentChannelId, playback.tuneChannel]);
+
+  useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       if (session.contentRoute) {
         session.closeContent();
@@ -126,6 +133,8 @@ export default function RootApp() {
         onResetCycle={session.resetCycle}
         onManageContent={() => session.openChoose()}
         onClose={session.closeSettings}
+        phoneUrl={session.phoneUrl}
+        phoneLinkOffline={session.phoneLinkOffline}
       />
     );
   } else if (session.wizardStep === "welcome") {
@@ -203,6 +212,8 @@ export default function RootApp() {
               onResetCycle={session.resetCycle}
               onManageContent={() => session.openChoose()}
               onClose={session.closeSettings}
+              phoneUrl={session.phoneUrl}
+              phoneLinkOffline={session.phoneLinkOffline}
             />
           </Animated.View>
         ) : null}

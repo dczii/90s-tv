@@ -131,6 +131,29 @@ export function nextInChannel(
   return null;
 }
 
+/**
+ * Pick up where watching stopped: the cursor's channel (or the first channel
+ * if that show is gone), at its remembered spot when that video still plays.
+ */
+export function resumeWatching(
+  expanded: readonly ExpandedVideoId[],
+  cursor: AllowlistCursor | null,
+  spots: ReadonlyMap<string, ChannelResume>,
+  definitiveSkipIds: ReadonlySet<string> = new Set(),
+): { item: ExpandedVideoId; seconds: number } | null {
+  const first = resumeInChannel(expanded, cursor, definitiveSkipIds);
+  if (!first) return null;
+  return (
+    resumeOnChannel(
+      expanded,
+      first.entryId,
+      spots.get(first.entryId) ?? null,
+      definitiveSkipIds,
+      cursor,
+    ) ?? { item: first, seconds: 0 }
+  );
+}
+
 /** Resume the cursor's channel, or the first channel if that show is gone. */
 export function resumeInChannel(
   expanded: readonly ExpandedVideoId[],

@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import {
+  addPhoneLinkRequestListener,
+  respondPhoneLink,
+  stopPhoneLinkServer,
+} from "phone-link";
+import {
   TimerEngine,
   type AllowlistEntry,
   type TimerEvent,
@@ -11,6 +16,10 @@ import { loadStore, saveTimer } from "../data/timerStore";
 import type { AllowlistRepository } from "../data/allowlistRepo";
 import type { SqliteKv } from "../data/sqliteKv";
 import { addActivityResumeListener, deviceTime } from "../time/deviceTime";
+import { handlePhoneRequest, phoneChannelId } from "../phone/linkHandler";
+import { lookupOEmbed } from "../phone/oEmbed";
+import { startPhoneLink } from "../phone/phoneLink";
+import { loadCursor, saveCursor as saveAllowlistCursor } from "../player/cursorStore";
 
 export type WizardStep =
   | "welcome"
@@ -69,6 +78,14 @@ export type SessionApi = {
   finishWizard: () => void;
   onAllowlistSaved: (entries: AllowlistEntry[]) => void;
   onPlaylistsUpdated: (entries: AllowlistEntry[]) => void;
+  phoneUrl: string | null;
+  phoneLinkOffline: boolean;
+  bindPhonePlayback: (playback: PhonePlayback) => void;
+};
+
+export type PhonePlayback = {
+  currentId: () => string | null;
+  tune: (entryId: string) => Promise<void>;
 };
 
 export function useAppSession(): SessionApi {
@@ -83,6 +100,13 @@ export function useAppSession(): SessionApi {
   );
   const [allowlistRepo, setAllowlistRepo] =
     useState<AllowlistRepository | null>(null);
+  const [phoneUrl, setPhoneUrl] = useState<string | null>(null);
+  const [phoneLinkOffline, setPhoneLinkOffline] = useState(false);
+  const phoneLinkWanted = useRef(false);
+  const phonePlaybackRef = useRef<PhonePlayback | null>(null);
+  const changePolicyRef = useRef<(watchMin: number, restMin: number) => string | null>(
+    () => "Not ready",
+  );
 
   const persistAll = useCallback(() => {
     const session = sessionRef.current;
@@ -99,6 +123,23 @@ export function useAppSession(): SessionApi {
     },
     [persistAll],
   );
+
+  const publishPhoneLink = useCallback(() => {
+    const session = sessionRef.current;
+    if (!session || !phoneLinkWanted.current) return;
+    if (AppState.currentState !== "active") {
+      stopPhoneLinkServer();
+      return;
+    }
+    try {
+      const url = startPhoneLink(session.kv);
+      setPhoneUrl(url);
+      setPhoneLinkOffline(url == null);
+    } catch {
+      setPhoneUrl(null);
+      setPhoneLinkOffline(true);
+    }
+  }, []);
 
   const tickNow = useCallback(() => {
     const session = sessionRef.current;
@@ -130,12 +171,92 @@ export function useAppSession(): SessionApi {
   }, [persistAll]);
 
   useEffect(() => {
+    const sub = addPhoneLinkRequestListener((event) => {
+      void (async () => {
+        const session = sessionRef.current;
+        try {
+          if (!session) {
+            respondPhoneLink(
+              event.id,
+              503,
+              JSON.stringify({ error: "Not ready" }),
+            );
+            return;
+          }
+          const result = await handlePhoneRequest(
+            session.allowlist,
+            {
+              method: event.method,
+              route: event.route,
+              body: event.body,
+              entryId: event.entryId,
+            },
+            { now: Date.now(), lookup: lookupOEmbed },
+            {
+              snapshot: () => {
+                const snap = session.engine.snapshot(deviceTime());
+                const cursorId = loadCursor(session.kv)?.entryId ?? null;
+                const liveId = phonePlaybackRef.current?.currentId() ?? null;
+                return {
+                  phase: snap.phase,
+                  watchMin: Math.round(snap.policy.watchDurationMs / 60_000),
+                  restMin: Math.round(snap.policy.restDurationMs / 60_000),
+                  remainingMs: snap.remainingMs,
+                  currentId: phoneChannelId(snap.phase, liveId, cursorId),
+                };
+              },
+              tune: async (entryId) => {
+                const playback = phonePlaybackRef.current;
+                if (!playback) throw new Error("Not ready");
+                await playback.tune(entryId);
+              },
+              saveCursor: (entryId) => {
+                saveAllowlistCursor(session.kv, { entryId, index: 0 });
+              },
+              changePolicy: (watchMin, restMin) =>
+                changePolicyRef.current(watchMin, restMin),
+            },
+          );
+          respondPhoneLink(event.id, result.status, result.body);
+          if (result.changed) {
+            setAllowlistEntries(session.allowlist.list());
+          }
+        } catch (err) {
+          const notReady = err instanceof Error && err.message === "Not ready";
+          respondPhoneLink(
+            event.id,
+            notReady ? 503 : 500,
+            JSON.stringify({
+              error: notReady ? "Not ready" : "Could not update the list.",
+            }),
+          );
+        }
+      })();
+    });
+    return () => {
+      sub.remove();
+      stopPhoneLinkServer();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showSettings) return;
+    phoneLinkWanted.current = true;
+    publishPhoneLink();
+  }, [showSettings, allowlistRepo, publishPhoneLink]);
+
+  useEffect(() => {
     const onResume = () => tickNow();
     const sub = addActivityResumeListener(onResume);
     const appSub = AppState.addEventListener(
       "change",
       (next: AppStateStatus) => {
-        if (next === "active") onResume();
+        if (next === "active") {
+          onResume();
+          publishPhoneLink();
+        } else if (next === "background") {
+          stopPhoneLinkServer();
+        }
       },
     );
     const interval = setInterval(() => {
@@ -146,7 +267,7 @@ export function useAppSession(): SessionApi {
       appSub.remove();
       clearInterval(interval);
     };
-  }, [tickNow]);
+  }, [tickNow, publishPhoneLink]);
 
   const completeSetup = useCallback(
     (watchMin: number, restMin: number) => {
@@ -207,6 +328,11 @@ export function useAppSession(): SessionApi {
     },
     [applyEvent],
   );
+  changePolicyRef.current = changePolicy;
+
+  const bindPhonePlayback = useCallback((playback: PhonePlayback) => {
+    phonePlaybackRef.current = playback;
+  }, []);
 
   const resetCycle = useCallback(() => {
     const session = sessionRef.current;
@@ -262,5 +388,8 @@ export function useAppSession(): SessionApi {
       setAllowlistEntries(entries);
       setContentRoute(null);
     },
+    phoneUrl,
+    phoneLinkOffline,
+    bindPhonePlayback,
   };
 }

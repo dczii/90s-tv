@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Constants from "expo-constants";
+import QRCode from "react-native-qrcode-svg";
 import { ENFORCEMENT_NOTE, type TimerSnapshot } from "@littleplay/core";
 import { DurationStepper } from "../components/DurationStepper";
 import { TvButton } from "../components/TvButton";
@@ -14,6 +15,8 @@ type Props = {
   onResetCycle: () => string | null;
   onManageContent: () => void;
   onClose: () => void;
+  phoneUrl: string | null;
+  phoneLinkOffline: boolean;
 };
 
 /** app.json version and Android versionCode, e.g. "1.2.0 (3)". */
@@ -38,6 +41,8 @@ export function ParentSettingsScreen({
   onResetCycle,
   onManageContent,
   onClose,
+  phoneUrl,
+  phoneLinkOffline,
 }: Props) {
   const { s } = useLayout();
   const [watchMin, setWatchMin] = useState(
@@ -172,6 +177,44 @@ export function ParentSettingsScreen({
                 iconColor={colors.offWhite}
                 s={s}
               />
+              <Divider />
+              <View
+                style={[
+                  styles.phoneRow,
+                  { gap: s(16), marginTop: s(8), marginBottom: s(4) },
+                ]}
+              >
+                {phoneUrl ? (
+                  <View
+                    style={[
+                      styles.qrCard,
+                      {
+                        borderRadius: s(8),
+                        overflow: "hidden",
+                      },
+                    ]}
+                    accessibilityLabel="QR code to edit YouTube links on your phone"
+                  >
+                    <QRCode
+                      value={phoneUrl}
+                      size={s(240)}
+                      color={colors.navy}
+                      backgroundColor={colors.offWhite}
+                      quietZone={4}
+                    />
+                  </View>
+                ) : null}
+                <Text
+                  style={[
+                    styles.phoneHint,
+                    { fontSize: s(18), lineHeight: s(26) },
+                  ]}
+                >
+                  {phoneLinkOffline
+                    ? "Connect the TV to Wi‑Fi"
+                    : "Same Wi‑Fi. Scan to add or remove YouTube links."}
+                </Text>
+              </View>
               <Divider />
               <SettingsRow
                 label="App version"
@@ -324,6 +367,18 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.white10,
     alignSelf: "stretch",
+  },
+  phoneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  qrCard: {
+    backgroundColor: colors.offWhite,
+  },
+  phoneHint: {
+    flex: 1,
+    color: colors.offWhite,
+    fontWeight: "600",
   },
   error: { color: colors.amber },
   note: { color: colors.muted, opacity: 0.8 },

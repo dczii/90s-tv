@@ -66,6 +66,14 @@ export class AllowlistRepository {
     }
   }
 
+  /** Replace rows of one source and leave every other source in place. */
+  replaceSource(source: AllowlistSource, entries: readonly AllowlistEntry[]): void {
+    const keep = this.list().filter((entry) => entry.source !== source);
+    this.db.run("DELETE FROM allowlist_entries");
+    for (const entry of keep) this.upsert(entry);
+    for (const entry of entries) this.upsert(entry);
+  }
+
   upsert(entry: AllowlistEntry): void {
     this.db.run(
       `INSERT INTO allowlist_entries (

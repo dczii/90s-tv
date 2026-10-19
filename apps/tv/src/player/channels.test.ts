@@ -7,6 +7,7 @@ import {
   nextInChannel,
   resumeInChannel,
   resumeOnChannel,
+  resumeWatching,
   stepChannel,
 } from "./channels";
 
@@ -150,5 +151,36 @@ describe("resumeInChannel", () => {
     expect(
       resumeInChannel(expanded, { entryId: "gone", index: 0 })?.videoId,
     ).toBe("b0");
+  });
+});
+
+describe("resumeWatching", () => {
+  const cursor = { entryId: "franklin", index: 1 };
+
+  it("resumes the cursor video at its remembered spot after a break", () => {
+    const spots = new Map([["franklin", { videoId: "f1", seconds: 312 }]]);
+    const target = resumeWatching(expanded, cursor, spots);
+    expect(target?.item.videoId).toBe("f1");
+    expect(target?.seconds).toBe(312);
+  });
+
+  it("starts from the beginning with no remembered spot", () => {
+    const target = resumeWatching(expanded, cursor, new Map());
+    expect(target?.item.videoId).toBe("f1");
+    expect(target?.seconds).toBe(0);
+  });
+
+  it("ignores another channel's spot", () => {
+    const spots = new Map([["bear", { videoId: "b1", seconds: 90 }]]);
+    const target = resumeWatching(expanded, cursor, spots);
+    expect(target?.item.videoId).toBe("f1");
+    expect(target?.seconds).toBe(0);
+  });
+
+  it("drops a spot whose video is no longer playable", () => {
+    const spots = new Map([["franklin", { videoId: "f1", seconds: 312 }]]);
+    const target = resumeWatching(expanded, cursor, spots, new Set(["f1"]));
+    expect(target?.item.videoId).toBe("f0");
+    expect(target?.seconds).toBe(0);
   });
 });

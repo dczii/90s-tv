@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LittlePlay links</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0a101c;
+        color: #f5f2ea;
+      }
+      main {
+        max-width: 34rem;
+        margin: 0 auto;
+        padding: 1.25rem 1rem 3rem;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 0 0 0.35rem;
+      }
+      .lead {
+        color: #94a3b8;
+        margin: 0 0 1.25rem;
+        line-height: 1.4;
+      }
+      form {
+        display: flex;
+        gap: 0.5rem;
+      }
+      input {
+        flex: 1;
+        min-width: 0;
+        font-size: 1rem;
+        padding: 0.8rem 0.9rem;
+        border-radius: 0.8rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: #121c2b;
+        color: inherit;
+      }
+      button {
+        font-size: 1rem;
+        border: 0;
+        border-radius: 0.8rem;
+        padding: 0.8rem 1rem;
+        background: #ff7657;
+        color: #0a101c;
+        font-weight: 700;
+        transition: transform 160ms var(--ease-out);
+      }
+      button:active:not(:disabled) {
+        transform: scale(0.97);
+      }
+      button:disabled {
+        opacity: 0.55;
+      }
+      button.remove {
+        background: transparent;
+        color: #ff9a83;
+        padding: 0.35rem 0.2rem;
+      }
+      .error {
+        color: #f8c65d;
+        min-height: 1.25rem;
+        margin: 0.6rem 0 0;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0.4rem 0 0;
+      }
+      li {
+        background: #121c2b;
+        border-radius: 0.9rem;
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.65rem;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        align-items: flex-start;
+      }
+      .kind {
+        color: #94a3b8;
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin: 0 0 0.2rem;
+      }
+      .title {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 650;
+      }
+      a {
+        color: #94a3b8;
+        word-break: break-all;
+        font-size: 0.85rem;
+      }
+      .empty {
+        color: #94a3b8;
+      }
+      .banner {
+        background: #3a2a12;
+        color: #f8c65d;
+        border-radius: 0.8rem;
+        padding: 0.8rem 1rem;
+        margin: 0 0 1rem;
+        line-height: 1.4;
+      }
+      .banner[hidden] {
+        display: none;
+      }
+      .panels {
+        position: relative;
+        display: grid;
+      }
+      .tabs {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        padding: 0.25rem;
+        margin: 0 0 1rem;
+        background: #121c2b;
+        border-radius: 0.9rem;
+      }
+      .tab-pill {
+        position: absolute;
+        top: 0.25rem;
+        bottom: 0.25rem;
+        left: 0.25rem;
+        width: calc(50% - 0.25rem);
+        border-radius: 0.7rem;
+        background: #ff7657;
+        transform: translateX(0);
+        transition: transform 180ms var(--ease-out);
+      }
+      .tabs[data-tab="minutes"] .tab-pill {
+        transform: translateX(100%);
+      }
+      .tabs button {
+        position: relative;
+        z-index: 1;
+        background: transparent;
+        color: #94a3b8;
+        transition: transform 160ms var(--ease-out), color 180ms ease;
+      }
+      .tabs[data-tab="channels"] button[data-tab="channels"],
+      .tabs[data-tab="minutes"] button[data-tab="minutes"] {
+        color: #0a101c;
+      }
+      .panel {
+        opacity: 0;
+        transform: translateY(6px);
+        visibility: hidden;
+        pointer-events: none;
+        position: absolute;
+        height: 0;
+        overflow: hidden;
+        transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+      }
+      .panel.is-active {
+        opacity: 1;
+        transform: translateY(0);
+        visibility: visible;
+        pointer-events: auto;
+        position: relative;
+        height: auto;
+        overflow: visible;
+      }
+      .phase {
+        color: #94a3b8;
+        margin: 0 0 0.85rem;
+      }
+      .remote {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin: 0 0 0.4rem;
+      }
+      .remote button,
+      .stepper button,
+      .preset {
+        background: #121c2b;
+        color: #f5f2ea;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .remote p {
+        flex: 1;
+        margin: 0;
+        text-align: center;
+        font-weight: 700;
+      }
+      .stepper {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: #121c2b;
+        border-radius: 0.9rem;
+        padding: 0.85rem 0.85rem;
+        margin-bottom: 0.65rem;
+      }
+      .stepper button {
+        width: 3.25rem;
+        height: 3.25rem;
+        padding: 0;
+        font-size: 1.5rem;
+        line-height: 1;
+      }
+      .step-copy {
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+      }
+      .step-value {
+        margin: 0;
+        font-size: 2.4rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+      }
+      .step-label {
+        margin: 0.3rem 0 0;
+        color: #94a3b8;
+        font-size: 0.85rem;
+      }
+      .presets {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.35rem;
+      }
+      .preset {
+        flex: 1;
+        padding: 0.75rem 0.4rem;
+      }
+      .preset[aria-pressed="true"] {
+        background: #ff7657;
+        color: #0a101c;
+        border-color: transparent;
+      }
+      .minute-status {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        min-height: 1.25rem;
+        margin: 0.75rem 0 0;
+      }
+      .saved {
+        margin: 0;
+        color: #94a3b8;
+        opacity: 0;
+        transition: opacity 180ms var(--ease-out);
+      }
+      .saved.is-on {
+        opacity: 1;
+      }
+      .minute-status .error {
+        margin: 0;
+        text-align: right;
+      }
+      .current {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        white-space: nowrap;
+        padding: 0.35rem 0.55rem;
+        border-radius: 0.7rem;
+      }
+      .current:has(input:checked) {
+        background: #ff7657;
+        color: #0a101c;
+      }
+      .actions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.35rem;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .panel {
+          transform: none;
+          transition: opacity 180ms var(--ease-out);
+        }
+        .tab-pill,
+        button,
+        .tabs button {
+          transition: none;
+        }
+        .saved {
+          transition: opacity 180ms var(--ease-out);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>YouTube links</h1>
+      <p class="lead">
+        Channels changes what is playing. Minutes sets watch and break time.
+        Stay on the same Wi-Fi.
+      </p>
+      <div class="tabs" id="tabs" data-tab="channels" role="tablist">
+        <span class="tab-pill" aria-hidden="true"></span>
+        <button
+          type="button"
+          role="tab"
+          id="tab-channels"
+          data-tab="channels"
+          aria-selected="true"
+          aria-controls="panel-channels"
+        >
+          Channels
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-minutes"
+          data-tab="minutes"
+          aria-selected="false"
+          aria-controls="panel-minutes"
+        >
+          Minutes
+        </button>
+      </div>
+      <div class="panels">
+        <section class="panel is-active" id="panel-channels" data-panel="channels" role="tabpanel">
+          <p class="banner" id="banner" hidden>
+            The TV is on a channel this page does not have. Reload to refresh the list.
+          </p>
+          <div class="remote">
+            <button type="button" id="prev">Left</button>
+            <p id="ch-now">Channel</p>
+            <button type="button" id="next">Right</button>
+          </div>
+          <form id="add-form">
+            <input
+              id="url"
+              type="url"
+              inputmode="url"
+              placeholder="Paste a YouTube link"
+              autocomplete="off"
+              enterkeyhint="done"
+            />
+            <button id="add" type="submit">Add</button>
+          </form>
+          <p class="error" id="error" role="status"></p>
+          <ul id="list"></ul>
+        </section>
+        <section class="panel" id="panel-minutes" data-panel="minutes" role="tabpanel">
+          <p class="phase" id="phase"></p>
+          <div class="stepper">
+            <button type="button" data-step="watch" data-delta="-1" aria-label="Decrease watch minutes">−</button>
+            <div class="step-copy">
+              <p class="step-value" id="watch-value" aria-live="polite">—</p>
+              <p class="step-label">Watch minutes</p>
+            </div>
+            <button type="button" data-step="watch" data-delta="1" aria-label="Increase watch minutes">+</button>
+          </div>
+          <div class="stepper">
+            <button type="button" data-step="rest" data-delta="-1" aria-label="Decrease break minutes">−</button>
+            <div class="step-copy">
+              <p class="step-value" id="rest-value" aria-live="polite">—</p>
+              <p class="step-label">Break minutes</p>
+            </div>
+            <button type="button" data-step="rest" data-delta="1" aria-label="Increase break minutes">+</button>
+          </div>
+          <div class="presets">
+            <button type="button" class="preset" data-watch="15" data-rest="5" aria-pressed="false">15 / 5</button>
+            <button type="button" class="preset" data-watch="20" data-rest="10" aria-pressed="false">20 / 10</button>
+            <button type="button" class="preset" data-watch="30" data-rest="15" aria-pressed="false">30 / 15</button>
+          </div>
+          <p class="minute-status">
+            <span class="saved" id="saved" aria-hidden="true">Saved</span>
+            <span class="error" id="timer-error" role="status"></span>
+          </p>
+        </section>
+      </div>
+    </main>
+    <script>
+      const parts = location.pathname.split("/").filter(Boolean);
+      const token = parts[0] === "s" ? decodeURIComponent(parts[1] || "") : "";
+      const base = "/s/" + encodeURIComponent(token);
+      const api = base + "/api/links";
+      const remoteApi = base + "/api/remote";
+      const nowApi = base + "/api/now";
+      const timerApi = base + "/api/timer";
+      const listEl = document.getElementById("list");
+      const errorEl = document.getElementById("error");
+      const bannerEl = document.getElementById("banner");
+      const prevButton = document.getElementById("prev");
+      const nextButton = document.getElementById("next");
+      const chNowEl = document.getElementById("ch-now");
+      const form = document.getElementById("add-form");
+      const input = document.getElementById("url");
+      const addButton = document.getElementById("add");
+      const phaseEl = document.getElementById("phase");
+      const watchValue = document.getElementById("watch-value");
+      const restValue = document.getElementById("rest-value");
+      const savedEl = document.getElementById("saved");
+      const timerErrorEl = document.getElementById("timer-error");
+      const tabsEl = document.getElementById("tabs");
+      const WATCH_MIN = 1;
+      const WATCH_MAX = 60;
+      const REST_MIN = 1;
+      const REST_MAX = 180;
+      let shownId = null;
+      let lastLinks = [];
+      let ready = false;
+      let picking = false;
+      let watchMin = null;
+      let restMin = null;
+      let saveTimer = null;
+      let saveGen = 0;
+      let savedHide = null;
+
+      function setError(message) {
+        errorEl.textContent = message || "";
+      }
+
+      function setTimerError(message) {
+        timerErrorEl.textContent = message || "";
+      }
+
+      function phaseLine(data) {
+        const names = {
+          Setup: "Setup",
+          AwaitingConfirmation: "Ready",
+          Playing: "Playing",
+          Resting: "Break",
+        };
+        const name = names[data.phase] || data.phase || "";
+        if (data.phase !== "Playing" && data.phase !== "Resting") return name;
+        const total = Math.max(0, Math.ceil((data.remainingMs || 0) / 1000));
+        const minutes = Math.floor(total / 60);
+        const seconds = String(total % 60).padStart(2, "0");
+        return name + " · " + minutes + ":" + seconds + " left";
+      }
+
+      function channelLine() {
+        if (!lastLinks.length) return "No channels";
+        const at = lastLinks.findIndex(function (link) {
+          return link.id === shownId;
+        });
+        if (at < 0) return "Choose a channel";
+        const number = String(at + 1).padStart(2, "0");
+        const title = lastLinks[at].title || lastLinks[at].id;
+        return "CH " + number + " · " + title;
+      }
+
+      function render(links) {
+        lastLinks = links;
+        const canStep = links.length > 1;
+        prevButton.disabled = !canStep;
+        nextButton.disabled = !canStep;
+        chNowEl.textContent = channelLine();
+        listEl.replaceChildren();
+        if (!links.length) {
+          const empty = document.createElement("li");
+          empty.className = "empty";
+          empty.textContent = "No links yet.";
+          listEl.appendChild(empty);
+          return;
+        }
+        for (const link of links) {
+          const item = document.createElement("li");
+          const row = document.createElement("div");
+          row.className = "row";
+          const copy = document.createElement("div");
+          const kind = document.createElement("p");
+          kind.className = "kind";
+          kind.textContent = link.kind === "Playlist" ? "Playlist" : "Video";
+          const title = document.createElement("p");
+          title.className = "title";
+          title.textContent = link.title || link.id;
+          const anchor = document.createElement("a");
+          anchor.href = link.url;
+          anchor.target = "_blank";
+          anchor.rel = "noreferrer";
+          anchor.textContent = link.url;
+          copy.append(kind, title, anchor);
+          const actions = document.createElement("div");
+          actions.className = "actions";
+          const current = document.createElement("label");
+          current.className = "current";
+          const radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = "current";
+          radio.checked = link.id === shownId;
+          radio.addEventListener("change", function () {
+            if (radio.checked) selectCurrent(link.id);
+          });
+          const currentText = document.createElement("span");
+          currentText.textContent = "Current";
+          current.append(radio, currentText);
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "remove";
+          remove.textContent = "Remove";
+          remove.addEventListener("click", function () {
+            removeLink(link.id);
+          });
+          actions.append(current, remove);
+          row.append(copy, actions);
+          item.appendChild(row);
+          listEl.appendChild(item);
+        }
+      }
+
+      function tabFromHash() {
+        return location.hash === "#minutes" ? "minutes" : "channels";
+      }
+
+      function showTab(name) {
+        const next = name === "minutes" ? "minutes" : "channels";
+        tabsEl.dataset.tab = next;
+        document.querySelectorAll(".tabs button").forEach(function (button) {
+          const on = button.dataset.tab === next;
+          button.setAttribute("aria-selected", on ? "true" : "false");
+          button.tabIndex = on ? 0 : -1;
+        });
+        document.querySelectorAll(".panel").forEach(function (panel) {
+          panel.classList.toggle("is-active", panel.dataset.panel === next);
+        });
+      }
+
+      function selectTab(name) {
+        showTab(name);
+        const url = name === "minutes" ? "#minutes" : location.pathname + location.search;
+        history.replaceState(null, "", url);
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function paintMinutes() {
+        watchValue.textContent = watchMin == null ? "—" : String(watchMin);
+        restValue.textContent = restMin == null ? "—" : String(restMin);
+        document.querySelectorAll("[data-step]").forEach(function (button) {
+          const step = button.dataset.step;
+          const delta = Number(button.dataset.delta);
+          const value = step === "watch" ? watchMin : restMin;
+          const min = step === "watch" ? WATCH_MIN : REST_MIN;
+          const max = step === "watch" ? WATCH_MAX : REST_MAX;
+          button.disabled = value == null || (delta < 0 && value <= min) || (delta > 0 && value >= max);
+        });
+        document.querySelectorAll(".preset").forEach(function (button) {
+          const on =
+            Number(button.dataset.watch) === watchMin &&
+            Number(button.dataset.rest) === restMin;
+          button.setAttribute("aria-pressed", on ? "true" : "false");
+          button.disabled = watchMin == null;
+        });
+      }
+
+      function changeMinutes(nextWatch, nextRest) {
+        if (watchMin == null || restMin == null) return;
+        const watch = clamp(nextWatch, WATCH_MIN, WATCH_MAX);
+        const rest = clamp(nextRest, REST_MIN, REST_MAX);
+        if (watch === watchMin && rest === restMin) return;
+        watchMin = watch;
+        restMin = rest;
+        paintMinutes();
+        setTimerError("");
+        savedEl.classList.remove("is-on");
+        savedEl.setAttribute("aria-hidden", "true");
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveMinutes, 200);
+      }
+
+      async function saveMinutes() {
+        const gen = ++saveGen;
+        const watch = watchMin;
+        const rest = restMin;
+        try {
+          const res = await fetch(timerApi, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ watchMin: watch, restMin: rest }),
+          });
+          const data = await res.json().catch(function () {
+            return {};
+          });
+          if (gen !== saveGen) return;
+          if (!res.ok) {
+            setTimerError(data.error || "Could not save the timers.");
+            return;
+          }
+          savedEl.classList.add("is-on");
+          savedEl.setAttribute("aria-hidden", "false");
+          clearTimeout(savedHide);
+          savedHide = setTimeout(function () {
+            savedEl.classList.remove("is-on");
+            savedEl.setAttribute("aria-hidden", "true");
+          }, 1600);
+        } catch (_err) {
+          if (gen !== saveGen) return;
+          setTimerError("Can't reach the TV. Stay on the same Wi-Fi and keep LittlePlay open.");
+        }
+      }
+
+      async function loadLinks() {
+        const res = await fetch(api);
+        if (!res.ok) throw new Error("load");
+        const data = await res.json();
+        const links = Array.isArray(data.links) ? data.links : [];
+        if (shownId && !links.some(function (link) { return link.id === shownId; })) {
+          shownId = null;
+        }
+        render(links);
+      }
+
+      async function loadRemote() {
+        const res = await fetch(remoteApi);
+        if (!res.ok) throw new Error("load");
+        const data = await res.json();
+        shownId = typeof data.currentId === "string" ? data.currentId : null;
+        watchMin = Number.isFinite(data.watchMin) ? data.watchMin : null;
+        restMin = Number.isFinite(data.restMin) ? data.restMin : null;
+        phaseEl.textContent = phaseLine(data);
+        paintMinutes();
+        render(Array.isArray(data.links) ? data.links : []);
+        bannerEl.hidden = true;
+        ready = true;
+      }
+
+      function stepChannel(delta) {
+        if (lastLinks.length < 2) return;
+        let at = lastLinks.findIndex(function (link) {
+          return link.id === shownId;
+        });
+        if (at < 0) at = delta < 0 ? 0 : -1;
+        const next = (at + delta + lastLinks.length) % lastLinks.length;
+        const link = lastLinks[next];
+        if (link) selectCurrent(link.id);
+      }
+
+      async function checkNow() {
+        if (!ready || picking) return;
+        try {
+          const res = await fetch(nowApi);
+          if (!res.ok) return;
+          const data = await res.json();
+          const id = typeof data.id === "string" ? data.id : "";
+          if (!id || id === shownId) {
+            bannerEl.hidden = true;
+            return;
+          }
+          if (!lastLinks.some(function (link) { return link.id === id; })) {
+            bannerEl.hidden = false;
+            return;
+          }
+          shownId = id;
+          bannerEl.hidden = true;
+          render(lastLinks);
+        } catch (_err) {
+          // A missed check leaves the list and timers as they are.
+        }
+      }
+
+      async function removeLink(id) {
+        setError("");
+        try {
+          const res = await fetch(api + "/" + encodeURIComponent(id), {
+            method: "DELETE",
+          });
+          const data = await res.json().catch(function () {
+            return {};
+          });
+          if (!res.ok) {
+            setError(data.error || "Could not remove that link.");
+            return;
+          }
+          await loadLinks();
+        } catch (_err) {
+          setError("Can't reach the TV. Stay on the same Wi-Fi and keep LittlePlay open.");
+        }
+      }
+
+      async function selectCurrent(id) {
+        const previous = shownId;
+        picking = true;
+        setError("");
+        try {
+          const res = await fetch(nowApi, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: id }),
+          });
+          const data = await res.json().catch(function () {
+            return {};
+          });
+          if (!res.ok) {
+            shownId = previous;
+            render(lastLinks);
+            setError(data.error || "Could not change the channel.");
+            return;
+          }
+          shownId = typeof data.id === "string" ? data.id : id;
+          bannerEl.hidden = true;
+          render(lastLinks);
+        } catch (_err) {
+          shownId = previous;
+          render(lastLinks);
+          setError("Can't reach the TV. Stay on the same Wi-Fi and keep LittlePlay open.");
+        } finally {
+          picking = false;
+        }
+      }
+
+      form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        const url = input.value.trim();
+        if (!url) {
+          setError("That doesn't look like a YouTube link.");
+          return;
+        }
+        addButton.disabled = true;
+        setError("");
+        try {
+          const res = await fetch(api, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: url }),
+          });
+          const data = await res.json().catch(function () {
+            return {};
+          });
+          if (!res.ok) {
+            setError(data.error || "Could not add that link.");
+            return;
+          }
+          input.value = "";
+          await loadLinks();
+        } catch (_err) {
+          setError("Can't reach the TV. Stay on the same Wi-Fi and keep LittlePlay open.");
+        } finally {
+          addButton.disabled = false;
+        }
+      });
+
+      document.querySelectorAll(".tabs button").forEach(function (button) {
+        button.addEventListener("click", function () {
+          selectTab(button.dataset.tab);
+        });
+      });
+      document.querySelectorAll("[data-step]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          const delta = Number(button.dataset.delta);
+          if (button.dataset.step === "watch") changeMinutes(watchMin + delta, restMin);
+          else changeMinutes(watchMin, restMin + delta);
+        });
+      });
+      document.querySelectorAll(".preset").forEach(function (button) {
+        button.addEventListener("click", function () {
+          changeMinutes(Number(button.dataset.watch), Number(button.dataset.rest));
+        });
+      });
+      window.addEventListener("hashchange", function () {
+        showTab(tabFromHash());
+      });
+
+      prevButton.addEventListener("click", function () {
+        stepChannel(-1);
+      });
+      nextButton.addEventListener("click", function () {
+        stepChannel(1);
+      });
+
+      showTab(tabFromHash());
+      loadRemote().catch(function () {
+        setError("Can't reach the TV. Stay on the same Wi-Fi and keep LittlePlay open.");
+      });
+      setInterval(checkNow, 4000);
+    </script>
+  </body>
+</html>

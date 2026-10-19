@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -165,7 +166,13 @@ export function ChooseContentScreen({
 }: Props) {
   const { s } = useLayout();
   const [selected, setSelected] = useState<Map<string, AllowlistEntry>>(
-    () => new Map(allowlist.list().map((e) => [e.id, e])),
+    () =>
+      new Map(
+        allowlist
+          .list()
+          .filter((entry) => entry.source === "Catalog")
+          .map((entry) => [entry.id, entry]),
+      ),
   );
   const initialIds = useRef(new Set(selected.keys()));
 
@@ -197,8 +204,11 @@ export function ChooseContentScreen({
   const hasChanges =
     selected.size !== initialIds.current.size ||
     [...selected.keys()].some((id) => !initialIds.current.has(id));
+  const manualCount = allowlist
+    .list()
+    .filter((entry) => entry.source !== "Catalog").length;
   const saveDisabled =
-    selected.size === 0 || (managing && !hasChanges);
+    selected.size + manualCount === 0 || (managing && !hasChanges);
 
   return (
     <ScreenShell
@@ -213,7 +223,16 @@ export function ChooseContentScreen({
             : "Pick one or more shows. No YouTube sign-in needed."
         }
       />
-      <View style={[styles.grid, { gap: s(16), marginTop: s(16) }]}>
+      {/* Android's ScrollView scrolls the focused card into view on D-pad moves. */}
+      <ScrollView
+        style={[styles.gridScroll, { marginTop: s(16) }]}
+        contentContainerStyle={[
+          styles.grid,
+          { gap: s(16), paddingBottom: s(8) },
+        ]}
+        fadingEdgeLength={s(48)}
+        showsVerticalScrollIndicator={false}
+      >
         {PRESET_PLAYLISTS.map((item, index) => (
           <PlaylistCard
             key={item.id}
@@ -226,7 +245,7 @@ export function ChooseContentScreen({
             s={s}
           />
         ))}
-      </View>
+      </ScrollView>
       <View style={[styles.footer, { gap: s(16), paddingTop: s(12) }]}>
         <View style={[styles.footerMeta, { gap: s(20) }]}>
           {onBack ? (
@@ -253,9 +272,8 @@ export function ChooseContentScreen({
           label={managing ? "Save changes" : "Save playlists"}
           disabled={saveDisabled}
           onPress={() => {
-            const entries = [...selected.values()];
-            allowlist.replaceAll(entries);
-            onSaved(entries);
+            allowlist.replaceSource("Catalog", [...selected.values()]);
+            onSaved(allowlist.list());
           }}
         />
       </View>
@@ -264,11 +282,13 @@ export function ChooseContentScreen({
 }
 
 const styles = StyleSheet.create({
-  grid: {
+  gridScroll: {
     flex: 1,
+    minHeight: 0,
+  },
+  grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    minHeight: 0,
     alignContent: "flex-start",
   },
   card: {

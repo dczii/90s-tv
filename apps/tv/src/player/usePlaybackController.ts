@@ -11,13 +11,14 @@ import { messageForApiError } from "../youtube/errors";
 import {
   channelsFromEntries,
   nextInChannel,
-  resumeInChannel,
   resumeOnChannel,
+  resumeWatching,
   type ChannelResume,
   type PlaybackChannel,
 } from "./channels";
 import { clearCursor, loadCursor, saveCursor } from "./cursorStore";
 import { expandAndPickNext } from "./expandAllowlist";
+import { loadSpots, saveSpots } from "./spotStore";
 import {
   SKIP_IFRAME_ERROR_CODES,
   type PlayerSessionApi,
@@ -37,6 +38,18 @@ export type PlaybackUi = {
   /** Seconds to start the current video at. 0 plays from the beginning. */
   resumeSeconds: number;
 };
+
+/** How often the live playback spot is sampled while Playing. */
+const SPOT_SAMPLE_MS = 1000;
+/**
+ * Right after a load the IFrame can still report the previous video's time.
+ * commitPlay already records the start spot, so skipping this window is safe.
+ */
+const SPOT_SETTLE_MS = 2500;
+/** Samples between SQLite writes; leaving Playing always writes. */
+const SPOT_PERSIST_EVERY = 5;
+
+type LiveSpot = { entryId: string; videoId: string; since: number };
 
 /** Catalog-only: expand/probe public playlists with the Data API key. */
 function catalogAuth(): AuthMode {
@@ -58,6 +71,8 @@ export function usePlaybackController(opts: {
   continueWatching: () => Promise<void>;
   flashInfo: () => void;
   tuneChannel: (entryId: string) => Promise<void>;
+  /** Live dial id, including a tune that has not re-rendered yet. */
+  currentChannelId: () => string | null;
   /** Remember the live playback position so a later remount seeks back. */
   holdPosition: (seconds: number) => void;
 } {
@@ -78,8 +93,15 @@ export function usePlaybackController(opts: {
   const channelRef = useRef<string | null>(null);
   const videoIdRef = useRef<string | null>(null);
   const spotsRef = useRef(new Map<string, ChannelResume>());
+  /** The video the player was last told to load, for sampling its spot. */
+  const liveRef = useRef<LiveSpot | null>(null);
   const tuneChain = useRef(Promise.resolve());
   const channels = useMemo(() => channelsFromEntries(entries), [entries]);
+
+  // Spots outlive the process, so a break across a restart still resumes.
+  useEffect(() => {
+    if (kv) spotsRef.current = loadSpots(kv);
+  }, [kv]);
 
   const flashInfo = useCallback(() => {
     setShowInfo(true);
@@ -99,9 +121,15 @@ export function usePlaybackController(opts: {
         videoId: next.videoId,
         seconds: start,
       });
+      liveRef.current = {
+        entryId: next.entryId,
+        videoId: next.videoId,
+        since: Date.now(),
+      };
       setChannelEntryId(next.entryId);
       setNoPlayableSlate(false);
       saveCursor(kv, cursorFromExpanded(next));
+      saveSpots(kv, spotsRef.current);
       setVideoId(next.videoId);
       setResumeSeconds(start);
       setVideoTitle(title);
@@ -121,6 +149,7 @@ export function usePlaybackController(opts: {
       setVideoId(null);
       setResumeSeconds(0);
       videoIdRef.current = null;
+      liveRef.current = null;
     },
     [player],
   );
@@ -179,6 +208,7 @@ export function usePlaybackController(opts: {
     const prev = prevPhase.current;
     prevPhase.current = phase;
     if (prev === "Playing" && phase !== "Playing") {
+      liveRef.current = null;
       void player.detachAndDestroy();
       setVideoId(null);
       setResumeSeconds(0);
@@ -186,6 +216,35 @@ export function usePlaybackController(opts: {
       setNoPlayableSlate(false);
     }
   }, [phase, player]);
+
+  // The player is gone by the time a break starts, so keep the spot current
+  // while Playing; Continue then picks up within a second of where it stopped.
+  useEffect(() => {
+    if (phase !== "Playing" || !kv) return;
+    let samples = 0;
+    let busy = false;
+    const timer = setInterval(() => {
+      const live = liveRef.current;
+      if (busy || !live || Date.now() - live.since < SPOT_SETTLE_MS) return;
+      busy = true;
+      void player.currentTime().then((seconds) => {
+        busy = false;
+        if (liveRef.current !== live || !(seconds >= 1)) return;
+        spotsRef.current.set(live.entryId, {
+          videoId: live.videoId,
+          seconds,
+        });
+        samples += 1;
+        if (samples % SPOT_PERSIST_EVERY === 0) {
+          saveSpots(kv, spotsRef.current);
+        }
+      });
+    }, SPOT_SAMPLE_MS);
+    return () => {
+      clearInterval(timer);
+      saveSpots(kv, spotsRef.current);
+    };
+  }, [phase, kv, player]);
 
   // Restore into still-valid Playing after tick (YT-D23) — once.
   useEffect(() => {
@@ -206,27 +265,33 @@ export function usePlaybackController(opts: {
         false,
       );
       if (op !== opRef.current) return;
-      const next =
+      const target =
         result.status === "ok"
-          ? resumeInChannel(result.expanded, cursor, result.definitiveSkipIds)
+          ? resumeWatching(
+              result.expanded,
+              cursor,
+              spotsRef.current,
+              result.definitiveSkipIds,
+            )
           : null;
-      if (!next) {
+      if (!target) {
         setNoPlayableSlate(true);
         return;
       }
-      await commitPlay(next, op);
+      await commitPlay(target.item, op, target.seconds);
     })();
   }, [phase, kv, entries, commitPlay]);
 
   const holdPosition = useCallback((seconds: number) => {
     if (!(seconds >= 1)) return;
-    const entryId = channelRef.current;
-    const video = videoIdRef.current;
-    if (entryId && video) {
-      spotsRef.current.set(entryId, { videoId: video, seconds });
+    const live = liveRef.current;
+    if (live) {
+      spotsRef.current.set(live.entryId, { videoId: live.videoId, seconds });
     }
     setResumeSeconds(seconds);
   }, []);
+
+  const currentChannelId = useCallback(() => channelRef.current, []);
 
   const tuneChannel = useCallback(
     (entryId: string) => {
@@ -309,12 +374,13 @@ export function usePlaybackController(opts: {
         setContinueError(messageForApiError(result.error));
         return;
       }
-      const next = resumeInChannel(
+      const target = resumeWatching(
         result.expanded,
         cursor,
+        spotsRef.current,
         result.definitiveSkipIds,
       );
-      if (!next) {
+      if (!target) {
         setNoPlayableOnConfirm(true);
         setContinueError("No playable videos in the allowlist.");
         return;
@@ -326,7 +392,7 @@ export function usePlaybackController(opts: {
       }
       // Prevent the boot-restore effect from double-attaching.
       restoredRef.current = true;
-      await commitPlay(next, op);
+      await commitPlay(target.item, op, target.seconds);
     } finally {
       setContinueBusy(false);
     }
@@ -348,6 +414,7 @@ export function usePlaybackController(opts: {
     continueWatching,
     flashInfo,
     tuneChannel,
+    currentChannelId,
     holdPosition,
   };
 }

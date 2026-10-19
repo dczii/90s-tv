@@ -12,8 +12,6 @@ import {
   type HWEvent,
 } from "react-native";
 import Animated, {
-  interpolateColor,
-  type SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
@@ -25,7 +23,6 @@ import Svg, {
   Circle,
   Defs,
   Ellipse,
-  Path,
   RadialGradient,
   Rect,
   Stop,
@@ -37,7 +34,6 @@ import { BrandRow, ScreenHeader, ScreenShell } from "../components/ScreenChrome"
 import { colors, useLayout } from "../../theme/tokens";
 import {
   duration,
-  EASE_IN_OUT,
   EASE_LINEAR,
   EASE_OUT,
   popScaleFrom,
@@ -51,7 +47,6 @@ import {
 } from "../../player/channels";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 type ReadyProps = {
   snapshot: TimerSnapshot;
@@ -320,133 +315,9 @@ const TUBE = {
   line: "#2A2622",
 } as const;
 
-/** How long the watch ring takes to settle on each 1s timer tick. */
-const RING_TICK_MS = 400;
-
 function requestTvFocus(node: unknown) {
   const target = node as { requestTVFocus?: () => void } | null;
   target?.requestTVFocus?.();
-}
-
-/** Rounded-rect outline inset into a width×height box, drawn clockwise from 12 o'clock. */
-function rimPath(
-  width: number,
-  height: number,
-  outerRadius: number,
-  inset: number,
-) {
-  const left = inset;
-  const top = inset;
-  const right = width - inset;
-  const bottom = height - inset;
-  const r = Math.max(
-    0,
-    Math.min(outerRadius - inset, (right - left) / 2, (bottom - top) / 2),
-  );
-  const mid = width / 2;
-  const d = [
-    `M ${mid} ${top}`,
-    `H ${right - r}`,
-    `A ${r} ${r} 0 0 1 ${right} ${top + r}`,
-    `V ${bottom - r}`,
-    `A ${r} ${r} 0 0 1 ${right - r} ${bottom}`,
-    `H ${left + r}`,
-    `A ${r} ${r} 0 0 1 ${left} ${bottom - r}`,
-    `V ${top + r}`,
-    `A ${r} ${r} 0 0 1 ${left + r} ${top}`,
-    `H ${mid}`,
-  ].join(" ");
-  const length =
-    2 * (right - left - 2 * r) + 2 * (bottom - top - 2 * r) + 2 * Math.PI * r;
-  return { d, length: Math.max(0, length) };
-}
-
-/**
- * Watch time left, lit along the bezel rim. Full when the window opens; the
- * lit end retreats counterclockwise to 12 o'clock as time runs out.
- */
-function WatchTimeRing({
-  fraction,
-  warn,
-  outerRadius,
-  stroke,
-  edge,
-}: {
-  fraction: number;
-  /** 0→1 as the last minute starts; crossfades the strip to amber. */
-  warn: SharedValue<number>;
-  outerRadius: number;
-  stroke: number;
-  edge: number;
-}) {
-  const reduced = useReducedMotion();
-  const progress = useSharedValue(fraction);
-  const [box, setBox] = useState({ width: 0, height: 0 });
-  const onLayout = useCallback((event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    setBox((prev) =>
-      prev.width === width && prev.height === height
-        ? prev
-        : { width, height },
-    );
-  }, []);
-
-  useEffect(() => {
-    if (reduced) {
-      progress.set(fraction);
-      return;
-    }
-    // Settle each tick rather than sweep linearly: the SVG spans the whole
-    // bezel, so it should sit idle over playing video most of each second.
-    progress.set(
-      withTiming(fraction, { duration: RING_TICK_MS, easing: EASE_IN_OUT }),
-    );
-  }, [fraction, progress, reduced]);
-
-  const { d, length } = rimPath(
-    box.width,
-    box.height,
-    outerRadius,
-    edge + stroke / 2,
-  );
-
-  const litProps = useAnimatedProps(() => ({
-    strokeDashoffset: length * (1 - progress.get()),
-  }));
-  const warnProps = useAnimatedProps(() => ({
-    strokeDashoffset: length * (1 - progress.get()),
-    opacity: warn.get(),
-  }));
-
-  return (
-    <View
-      pointerEvents="none"
-      style={StyleSheet.absoluteFill}
-      onLayout={onLayout}
-    >
-      {box.width > 0 ? (
-        <Svg width={box.width} height={box.height}>
-          <Path d={d} stroke={TUBE.line} strokeWidth={stroke} fill="none" />
-          <AnimatedPath
-            d={d}
-            stroke={colors.green}
-            strokeWidth={stroke}
-            fill="none"
-            strokeDasharray={`${length} ${length}`}
-            animatedProps={litProps}
-          />
-          <AnimatedPath
-            d={d}
-            stroke={colors.amber}
-            strokeWidth={stroke}
-            fill="none"
-            strokeDasharray={`${length} ${length}`}
-            animatedProps={warnProps}
-          />
-        </Svg>
-      ) : null}
-    </View>
-  );
 }
 
 export function PlayingShell({
@@ -465,16 +336,10 @@ export function PlayingShell({
   onHoldPosition,
 }: PlayingProps) {
   const { s, width, height, safeY } = useLayout();
-  const last60 = snapshot.remainingMs <= 60_000;
-  const watchFraction = Math.max(
-    0,
-    Math.min(1, snapshot.remainingMs / snapshot.policy.watchDurationMs),
-  );
   const endCount = endingCountdown(snapshot.remainingMs);
   const [heldCount, setHeldCount] = useState<number | null>(endCount);
   const loadedRef = useRef<string | null>(null);
   const reduced = useReducedMotion();
-  const amber = useSharedValue(last60 ? 1 : 0);
   const boot = useSharedValue(0);
   const allowMove = useSharedValue(reduced ? 0 : 1);
   const veil = useSharedValue(0);
@@ -541,30 +406,6 @@ export function PlayingShell({
     const sub = AppState.addEventListener("change", onChange);
     return () => sub.remove();
   }, [player]);
-
-  useEffect(() => {
-    if (reduced) {
-      amber.set(last60 ? 1 : 0);
-      return;
-    }
-    amber.set(
-      withTiming(last60 ? 1 : 0, {
-        duration: duration.screen,
-        easing: EASE_OUT,
-      }),
-    );
-  }, [amber, last60, reduced]);
-
-  const ledPlateStyle = useAnimatedStyle(() => ({
-    opacity: amber.get(),
-  }));
-  const ledTextStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(
-      amber.get(),
-      [0, 1],
-      [colors.amber, colors.navy],
-    ),
-  }));
 
   const channelsRef = useRef(channels);
   const activeRef = useRef(channelEntryId);
@@ -715,17 +556,19 @@ export function PlayingShell({
       openSettingsRef.current();
       return;
     }
-    if (event.eventType === "down" && !settingsFocused.current) {
-      requestTvFocus(settingsLinkRef.current);
-      return;
-    }
-    if (event.eventType === "up" && settingsFocused.current) {
-      requestTvFocus(sinkRef.current);
-      return;
-    }
-    if (settingsFocused.current) return;
+    // Left and right tune even when Parent settings has focus, and focus
+    // stays where it is so that control is not taken away.
     const delta = channelDeltaForTvEvent(event);
-    if (delta === 0) return;
+    if (delta === 0) {
+      if (event.eventType === "down" && !settingsFocused.current) {
+        requestTvFocus(settingsLinkRef.current);
+        return;
+      }
+      if (event.eventType === "up" && settingsFocused.current) {
+        requestTvFocus(sinkRef.current);
+      }
+      return;
+    }
     const now = Date.now();
     if (now - lastStepAt.current < 350) return;
     lastStepAt.current = now;
@@ -745,10 +588,9 @@ export function PlayingShell({
   const readoutTitle = activeChannel?.title ?? videoTitle;
   const glassRadius = s(14);
   const bezelRadius = s(28);
-  // The band under the chin is the bezel's thinnest; the strip fits inside it.
-  const rim = s(12);
   const bezelPadX = s(18);
   const bezelPadTop = s(18);
+  const bezelPadBottom = s(12);
   const bezelGap = s(12);
   const lipPad = s(6);
   const chinMinH = Math.max(s(56), chinH);
@@ -757,7 +599,7 @@ export function PlayingShell({
   const borders = 2 * (styles.bezel.borderWidth + styles.lip.borderWidth);
   const chromeX = borders + 2 * (bezelPadX + lipPad);
   const chromeY =
-    borders + bezelPadTop + 2 * lipPad + bezelGap + chinMinH + rim;
+    borders + bezelPadTop + 2 * lipPad + bezelGap + chinMinH + bezelPadBottom;
   // 86% wide unless that pushes the set into the TV-safe margin top and
   // bottom; then the widest bezel whose glass still clears it.
   const fitWidth = ((height - 2 * safeY - chromeY) * 16) / 9 + chromeX;
@@ -798,18 +640,11 @@ export function PlayingShell({
             borderRadius: bezelRadius,
             paddingHorizontal: bezelPadX,
             paddingTop: bezelPadTop,
-            paddingBottom: rim,
+            paddingBottom: bezelPadBottom,
             gap: bezelGap,
           },
         ]}
       >
-        <WatchTimeRing
-          fraction={watchFraction}
-          warn={amber}
-          outerRadius={bezelRadius - styles.bezel.borderWidth}
-          stroke={Math.max(3, Math.round(rim * 0.4))}
-          edge={Math.max(2, Math.round(rim * 0.3))}
-        />
         <View
           style={[
             styles.lip,
@@ -1015,24 +850,10 @@ export function PlayingShell({
             />
           )}
           <View style={styles.led}>
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.ledPlate,
-                { borderRadius: s(10) },
-                ledPlateStyle,
-              ]}
-            />
-            <Animated.Text
-              style={[styles.ledNum, { fontSize: s(26) }, ledTextStyle]}
-            >
+            <Text style={[styles.ledNum, { fontSize: s(26) }]}>
               {formatRemaining(snapshot.remainingMs)}
-            </Animated.Text>
-            <Animated.Text
-              style={[styles.ledCap, { fontSize: s(11) }, ledTextStyle]}
-            >
-              LEFT
-            </Animated.Text>
+            </Text>
+            <Text style={[styles.ledCap, { fontSize: s(11) }]}>LEFT</Text>
           </View>
         </View>
       </View>
@@ -1270,21 +1091,15 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
   },
   led: { alignItems: "flex-end", justifyContent: "center" },
-  ledPlate: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: colors.amber,
-  },
   ledNum: {
     color: colors.amber,
     fontFamily: "monospace",
     fontWeight: "700",
     letterSpacing: 1,
-    zIndex: 1,
   },
   ledCap: {
     color: colors.amber,
     fontWeight: "700",
     letterSpacing: 1.5,
-    zIndex: 1,
   },
 });

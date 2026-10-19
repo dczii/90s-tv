@@ -33,4 +33,47 @@ describe("AllowlistRepository", () => {
     // The forbidden token appears only in this expect string, not in product data.
     expect(json).not.toMatch(/googlevideo|\.mp4|videoplayback/);
   });
+
+  it("replaces one source and leaves the others in place", () => {
+    const sql = createAllowlistMemorySql();
+    migrateAllowlistTables(sql);
+    const repo = new AllowlistRepository(sql);
+    const manual: AllowlistEntry = {
+      id: "dQw4w9WgXcQ",
+      kind: "Video",
+      title: "From phone",
+      thumbnailUrl: null,
+      embeddable: null,
+      source: "ManualUrl",
+      addedAtWallMs: 1,
+      lastProbedWallMs: null,
+    };
+    const oldCatalog: AllowlistEntry = {
+      id: "PLold",
+      kind: "Playlist",
+      title: "Old show",
+      thumbnailUrl: null,
+      embeddable: null,
+      source: "Catalog",
+      addedAtWallMs: 2,
+      lastProbedWallMs: null,
+    };
+    const nextCatalog: AllowlistEntry = {
+      id: "PLnext",
+      kind: "Playlist",
+      title: "Next show",
+      thumbnailUrl: null,
+      embeddable: null,
+      source: "Catalog",
+      addedAtWallMs: 3,
+      lastProbedWallMs: null,
+    };
+    repo.upsert(manual);
+    repo.upsert(oldCatalog);
+    repo.replaceSource("Catalog", [nextCatalog]);
+    expect(repo.list().map((entry) => entry.id)).toEqual([
+      manual.id,
+      nextCatalog.id,
+    ]);
+  });
 });
