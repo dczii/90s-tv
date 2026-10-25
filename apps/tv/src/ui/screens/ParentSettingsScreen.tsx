@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import Constants from "expo-constants";
 import QRCode from "react-native-qrcode-svg";
 import { ENFORCEMENT_NOTE, type TimerSnapshot } from "@littleplay/core";
@@ -7,6 +7,9 @@ import { DurationStepper } from "../components/DurationStepper";
 import { TvButton } from "../components/TvButton";
 import { ScreenHeader, ScreenShell } from "../components/ScreenChrome";
 import { colors, useLayout } from "../../theme/tokens";
+
+const PRIVACY_POLICY_URL =
+  "https://github.com/dczii/90s-tv/blob/main/PRIVACY.md";
 
 type Props = {
   snapshot: TimerSnapshot;
@@ -215,6 +218,34 @@ export function ParentSettingsScreen({
                     : "Same Wi‑Fi. Scan to add or remove YouTube links."}
                 </Text>
               </View>
+              <Divider />
+              <Pressable
+                onPress={() => {
+                  void Linking.openURL(PRIVACY_POLICY_URL).catch(() => {
+                    setError("Could not open the privacy policy.");
+                  });
+                }}
+                style={({ focused }) => [
+                  styles.manageHit,
+                  {
+                    borderRadius: s(16),
+                    marginHorizontal: s(-8),
+                    paddingHorizontal: s(8),
+                  },
+                  focused && styles.manageFocused,
+                ]}
+                accessibilityRole="link"
+                accessibilityLabel="Open privacy policy"
+              >
+                <SettingsRow
+                  label="Privacy policy"
+                  value="View online"
+                  icon="ⓘ"
+                  mutedValue
+                  iconColor={colors.muted}
+                  s={s}
+                />
+              </Pressable>
               <Divider />
               <SettingsRow
                 label="App version"

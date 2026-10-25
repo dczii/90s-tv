@@ -203,21 +203,12 @@ def banner_from_icon(icon_px):
     px = blank(w, h, NAVY)
     mark = scale(icon_px, 128, 128)
     blit(px, mark, 16, (h - 128) // 2)
-    scale_n, tracking = 3, 3
-    line_one, line_two = "LITTLE", "PLAY"
-    text_x = 156
-    block_h = GLYPH_H * scale_n * 2 + 10
+    scale_n, tracking = 2, 3
+    line_one = "LITTLEPLAY"
+    text_x = 152 + (w - 152 - text_width(line_one, scale_n, tracking)) // 2
+    block_h = GLYPH_H * scale_n
     text_y = (h - block_h) // 2
     draw_text(px, line_one, text_x, text_y, scale_n, OFF_WHITE, tracking)
-    draw_text(
-        px,
-        line_two,
-        text_x,
-        text_y + GLYPH_H * scale_n + 10,
-        scale_n,
-        OFF_WHITE,
-        tracking,
-    )
     return px
 
 

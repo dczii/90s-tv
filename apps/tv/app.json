@@ -2,11 +2,14 @@
   "expo": {
     "name": "LittlePlay",
     "slug": "littleplay",
+    "owner": "danilozabala2",
     "version": "1.2.7",
     "orientation": "landscape",
     "icon": "./assets/tv-icon.png",
     "userInterfaceStyle": "dark",
-    "platforms": ["android"],
+    "platforms": [
+      "android"
+    ],
     "splash": {
       "backgroundColor": "#0A101C"
     },
@@ -48,6 +51,11 @@
       ],
       "expo-sqlite",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "880cc1d7-4168-47f9-8155-2806978135df"
+      }
+    }
   }
 }
