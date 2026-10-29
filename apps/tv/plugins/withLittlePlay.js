@@ -37,7 +37,8 @@ function withLittlePlay(config) {
   config = withAndroidManifest(config, (mod) => {
     const manifestXml = mod.modResults;
     ensureUsesFeature(manifestXml, "android.hardware.touchscreen", false);
-    ensureUsesFeature(manifestXml, "android.software.leanback", true);
+    // Optional so Play still offers the app on TVs whose catalog omits leanback.
+    ensureUsesFeature(manifestXml, "android.software.leanback", false);
 
     const application = AndroidConfig.Manifest.getMainApplicationOrThrow(manifestXml);
     application.$["android:allowBackup"] = "false";
@@ -51,7 +52,9 @@ function withLittlePlay(config) {
       let categories = filter.category || [];
       if (!Array.isArray(categories)) categories = [categories];
       const names = new Set(categories.map((category) => category.$["android:name"]));
-      names.delete("android.intent.category.LAUNCHER");
+      // Keep the phone launcher so Play offers the app on sticks its catalog
+      // does not classify as Android TV. Leanback launcher stays for real TVs.
+      names.add("android.intent.category.LAUNCHER");
       names.add("android.intent.category.LEANBACK_LAUNCHER");
       filter.category = [...names].map((name) => ({
         $: { "android:name": name },

@@ -23,6 +23,8 @@ YouTube Data API requests, and video playback requests directly to Google and
 YouTube. Google and YouTube process those requests under their own privacy
 policies. The embedded YouTube player may display ads and may collect device,
 network, account, and playback information as described by Google.
+LittlePlay uses YouTube's Privacy Enhanced Mode so playback views and ads are
+not used for personalization.
 
 LittlePlay also offers an optional phone-link page over the local Wi-Fi
 network. Links entered there are sent directly from the phone to the TV and

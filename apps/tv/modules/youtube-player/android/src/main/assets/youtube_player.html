@@ -87,6 +87,9 @@
           height: "100%",
           width: "100%",
           videoId: id,
+          // Privacy Enhanced Mode keeps views and ads from being personalized.
+          // LittlePlay is family-directed, so use it for every video.
+          host: "https://www.youtube-nocookie.com",
           playerVars: {
             autoplay: 1,
             controls: 0,

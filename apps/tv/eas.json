@@ -13,5 +13,19 @@
         "EXPO_TV": "1"
       }
     }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
+    "closed": {
+      "android": {
+        "track": "alpha",
+        "releaseStatus": "completed"
+      }
+    }
   }
 }
