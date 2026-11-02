@@ -152,6 +152,15 @@ async function youtubeFetch(
   return res;
 }
 
+/** Hermes fetch Responses fail `instanceof Response` across the Metro bundle. */
+function isHttpResponse(res: Response | YoutubeApiError): res is Response {
+  return (
+    typeof (res as Response).status === "number" &&
+    typeof (res as Response).json === "function" &&
+    !("kind" in res)
+  );
+}
+
 function thumbFromSnippet(snippet: Record<string, unknown>): string | null {
   const thumbs = snippet.thumbnails as
     | Record<string, { url?: string }>
@@ -176,7 +185,7 @@ export async function listMyPlaylists(
     apiKey,
     opts,
   );
-  if (!(res instanceof Response)) return res;
+  if (!isHttpResponse(res)) return res;
   const json = (await res.json().catch(() => ({}))) as {
     items?: Array<{ id?: string; snippet?: Record<string, unknown> }>;
   };
@@ -199,7 +208,7 @@ export async function listMySubscriptions(
     apiKey,
     opts,
   );
-  if (!(res instanceof Response)) return res;
+  if (!isHttpResponse(res)) return res;
   const json = (await res.json().catch(() => ({}))) as {
     items?: Array<{
       snippet?: {
@@ -253,7 +262,7 @@ async function channelUploadsPlaylist(
     apiKey,
     opts,
   );
-  if (!(res instanceof Response)) return res;
+  if (!isHttpResponse(res)) return res;
   const json = (await res.json().catch(() => ({}))) as {
     items?: Array<{
       contentDetails?: { relatedPlaylists?: { uploads?: string } };
@@ -279,7 +288,7 @@ export async function fetchVideoMetadata(
     apiKey,
     opts,
   );
-  if (!(res instanceof Response)) return res;
+  if (!isHttpResponse(res)) return res;
   const json = (await res.json().catch(() => ({}))) as {
     items?: Array<{
       id?: string;
@@ -339,7 +348,7 @@ export async function fetchPlaylistMetadata(
     apiKey,
     opts,
   );
-  if (!(res instanceof Response)) return res;
+  if (!isHttpResponse(res)) return res;
   const json = (await res.json().catch(() => ({}))) as {
     items?: Array<{ id?: string; snippet?: Record<string, unknown> }>;
   };
@@ -349,6 +358,89 @@ export async function fetchPlaylistMetadata(
     id: String(item.id),
     title: String(item.snippet?.title ?? playlistId),
     thumbnailUrl: item.snippet ? thumbFromSnippet(item.snippet) : null,
+  };
+}
+
+export type SearchHit = {
+  id: string;
+  kind: "Video" | "Playlist";
+  title: string;
+  thumbnailUrl: string | null;
+};
+
+/** search.list — public videos and playlists. 100 quota units per call. */
+export async function searchShows(
+  query: string,
+  auth: AuthMode,
+  apiKey: string,
+  opts: YoutubeRequestOpts = {},
+): Promise<SearchHit[] | YoutubeApiError> {
+  const res = await youtubeFetch(
+    "search",
+    {
+      part: "snippet",
+      q: query,
+      type: "video,playlist",
+      maxResults: "6",
+      safeSearch: "moderate",
+    },
+    auth,
+    apiKey,
+    opts,
+  );
+  if (!isHttpResponse(res)) return res;
+  const json = (await res.json().catch(() => ({}))) as {
+    items?: Array<{
+      id?: { videoId?: string; playlistId?: string };
+      snippet?: Record<string, unknown>;
+    }>;
+  };
+  const hits: SearchHit[] = [];
+  for (const item of json.items ?? []) {
+    const playlistId = item.id?.playlistId;
+    const videoId = item.id?.videoId;
+    const id = playlistId || videoId;
+    if (!id || !item.snippet) continue;
+    if (playlistId && (playlistId === "WL" || playlistId === "LL" || playlistId.startsWith("RD"))) {
+      continue;
+    }
+    hits.push({
+      id,
+      kind: playlistId ? "Playlist" : "Video",
+      title: String(item.snippet.title ?? id),
+      thumbnailUrl: thumbFromSnippet(item.snippet),
+    });
+  }
+  return hits;
+}
+
+/** channels.list — turn a handle, id, or legacy username into the uploads playlist. */
+export async function uploadsPlaylistForChannel(
+  target: { handle?: string | null; channelId?: string | null; username?: string | null },
+  auth: AuthMode,
+  apiKey: string,
+  opts: YoutubeRequestOpts = {},
+): Promise<CatalogItem | YoutubeApiError | null> {
+  const query: Record<string, string> = { part: "snippet,contentDetails" };
+  if (target.channelId) query.id = target.channelId;
+  else if (target.handle) query.forHandle = target.handle.replace(/^@/, "");
+  else if (target.username) query.forUsername = target.username;
+  else return null;
+  const res = await youtubeFetch("channels", query, auth, apiKey, opts);
+  if (!isHttpResponse(res)) return res;
+  const json = (await res.json().catch(() => ({}))) as {
+    items?: Array<{
+      snippet?: Record<string, unknown>;
+      contentDetails?: { relatedPlaylists?: { uploads?: string } };
+    }>;
+  };
+  const item = json.items?.[0];
+  const uploads = item?.contentDetails?.relatedPlaylists?.uploads;
+  if (!uploads || !item?.snippet) return null;
+  return {
+    id: uploads,
+    title: String(item.snippet.title ?? uploads),
+    thumbnailUrl: thumbFromSnippet(item.snippet),
   };
 }
 
@@ -370,7 +462,7 @@ export async function listPlaylistVideoIds(
     };
     if (pageToken) query.pageToken = pageToken;
     const res = await youtubeFetch("playlistItems", query, auth, apiKey, opts);
-    if (!(res instanceof Response)) return res;
+    if (!isHttpResponse(res)) return res;
     const json = (await res.json().catch(() => ({}))) as {
       nextPageToken?: string;
       items?: Array<{ contentDetails?: { videoId?: string } }>;

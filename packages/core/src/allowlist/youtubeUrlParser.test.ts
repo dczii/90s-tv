@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseYoutubeUrl } from "./youtubeUrlParser.js";
+import { classifyYoutubeInput, parseYoutubeUrl } from "./youtubeUrlParser.js";
 import { mergeAllowlist, isAllowlistEmpty } from "./types.js";
 import { classifyVideoProbe, noPlayableItem } from "./playability.js";
 import type { AllowlistEntry } from "./types.js";
@@ -51,6 +51,32 @@ describe("parseYoutubeUrl (YT-D17)", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe("UnsupportedHost");
     }
+  });
+
+  it("reads a link out of share text and offers the playlist first", () => {
+    const shared = classifyYoutubeInput(
+      "Little Bear\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLtest123",
+    );
+    expect(shared).toEqual({
+      kind: "choices",
+      choices: [
+        { id: "PLtest123", kind: "Playlist" },
+        { id: "dQw4w9WgXcQ", kind: "Video" },
+      ],
+    });
+  });
+
+  it("treats a show name as search and rejects mixes", () => {
+    expect(classifyYoutubeInput("Little Bear")).toEqual({
+      kind: "search",
+      query: "Little Bear",
+    });
+    expect(classifyYoutubeInput("https://www.youtube.com/playlist?list=RDmix123").kind).toBe(
+      "error",
+    );
+    expect(classifyYoutubeInput("https://www.youtube.com/@LittleBear").kind).toBe(
+      "channel",
+    );
   });
 
   it("rejects clips and garbage", () => {

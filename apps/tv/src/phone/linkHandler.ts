@@ -1,4 +1,5 @@
 import {
+  classifyYoutubeInput,
   parseYoutubeUrl,
   type AllowlistEntry,
   type AllowlistKind,
@@ -25,9 +26,31 @@ export type OEmbedHit = {
   thumbnailUrl: string | null;
 };
 
+export type ShowCard = {
+  id: string;
+  kind: AllowlistKind;
+  title: string;
+  thumbnailUrl: string | null;
+  url: string;
+  detail: string | null;
+};
+
+export type PhoneCatalog = {
+  video: (id: string) => Promise<Omit<ShowCard, "id" | "kind" | "url"> | null>;
+  playlist: (id: string) => Promise<Omit<ShowCard, "id" | "kind" | "url"> | null>;
+  channelUploads: (target: {
+    handle: string | null;
+    channelId: string | null;
+    username: string | null;
+  }) => Promise<ShowCard | null>;
+  search: (query: string) => Promise<ShowCard[]>;
+  library: () => Promise<{ connected: boolean; cards: ShowCard[] }>;
+};
+
 export type LinkHandlerDeps = {
   now: number;
   lookup?: (canonicalUrl: string) => Promise<OEmbedHit | null>;
+  catalog?: PhoneCatalog;
 };
 
 export type PhoneSnapshot = {
@@ -110,6 +133,14 @@ export async function handleLinkRequest(
 
   if (request.route === "add" && request.method === "POST") {
     return addLink(repo, request.body, deps);
+  }
+
+  if (request.route === "find" && request.method === "POST") {
+    return findShows(request.body, deps);
+  }
+
+  if (request.route === "library" && request.method === "GET") {
+    return libraryShows(deps);
   }
 
   return json(404, { error: "Not found" });
@@ -220,6 +251,79 @@ function readMinutes(
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function cardFromChoice(
+  id: string,
+  kind: AllowlistKind,
+  meta: { title: string; thumbnailUrl: string | null; detail: string | null } | null,
+): ShowCard {
+  return {
+    id,
+    kind,
+    title: meta?.title?.trim() || id,
+    thumbnailUrl: meta?.thumbnailUrl ?? null,
+    url: canonicalYoutubeUrl(kind, id),
+    detail: meta?.detail ?? null,
+  };
+}
+
+async function findShows(
+  rawBody: string,
+  deps: LinkHandlerDeps,
+): Promise<LinkHandlerResult> {
+  let text = "";
+  try {
+    const parsed = JSON.parse(rawBody) as { text?: unknown };
+    text = typeof parsed.text === "string" ? parsed.text : "";
+  } catch {
+    return json(400, { error: "Paste a YouTube link or type a show name." });
+  }
+
+  const classified = classifyYoutubeInput(text);
+  if (classified.kind === "error") return json(400, { error: classified.message });
+  if (!deps.catalog) {
+    return json(503, { error: "The TV could not reach YouTube." });
+  }
+
+  try {
+    if (classified.kind === "search") {
+      const cards = await deps.catalog.search(classified.query);
+      if (cards.length === 0) return json(200, { cards: [], error: "No shows found." });
+      return json(200, { cards });
+    }
+    if (classified.kind === "channel") {
+      const card = await deps.catalog.channelUploads(classified);
+      if (!card) {
+        return json(404, {
+          error: "That channel could not be added. Paste a video or playlist from it.",
+        });
+      }
+      return json(200, { cards: [card] });
+    }
+    const cards: ShowCard[] = [];
+    for (const choice of classified.choices) {
+      const meta =
+        choice.kind === "Video"
+          ? await deps.catalog.video(choice.id)
+          : await deps.catalog.playlist(choice.id);
+      cards.push(cardFromChoice(choice.id, choice.kind, meta));
+    }
+    return json(200, { cards });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not reach YouTube.";
+    return json(502, { error: message });
+  }
+}
+
+async function libraryShows(deps: LinkHandlerDeps): Promise<LinkHandlerResult> {
+  if (!deps.catalog) return json(200, { connected: false, cards: [] });
+  try {
+    return json(200, await deps.catalog.library());
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not reach YouTube.";
+    return json(502, { error: message });
+  }
 }
 
 async function addLink(

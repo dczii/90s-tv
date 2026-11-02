@@ -14,8 +14,8 @@ import kotlin.text.Charsets
 data class PhoneLinkResponse(val status: Int, val body: String)
 
 /**
- * Tiny HTTP/1.1 server. HTML is served here. `/api/links`, `/api/remote`,
- * `/api/now`, and `/api/timer` are forwarded to JS.
+ * Tiny HTTP/1.1 server. HTML is served here. `/api/links`, `/api/find`,
+ * `/api/library`, `/api/remote`, `/api/now`, and `/api/timer` are forwarded to JS.
  */
 class PhoneLinkServer(
   private val token: String,
@@ -145,6 +145,18 @@ class PhoneLinkServer(
       } else {
         write(client, 405, "text/plain; charset=utf-8", "Method not allowed")
       }
+      Action.Find -> if (request.method == "POST") {
+        val response = onApi("POST", "find", request.body, "")
+        write(client, response.status, "application/json; charset=utf-8", response.body)
+      } else {
+        write(client, 405, "text/plain; charset=utf-8", "Method not allowed")
+      }
+      Action.Library -> if (request.method == "GET") {
+        val response = onApi("GET", "library", "", "")
+        write(client, response.status, "application/json; charset=utf-8", response.body)
+      } else {
+        write(client, 405, "text/plain; charset=utf-8", "Method not allowed")
+      }
     }
   }
 
@@ -160,6 +172,8 @@ class PhoneLinkServer(
         "remote" -> Action.Remote
         "now" -> Action.Now
         "timer" -> Action.Timer
+        "find" -> Action.Find
+        "library" -> Action.Library
         else -> Action.NotFound
       }
     }
@@ -177,6 +191,8 @@ class PhoneLinkServer(
     data object Remote : Action()
     data object Now : Action()
     data object Timer : Action()
+    data object Find : Action()
+    data object Library : Action()
   }
 
   private fun readRequest(input: InputStream): RawRequest? {

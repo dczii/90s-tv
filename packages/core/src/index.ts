@@ -55,7 +55,13 @@ export type {
   AllowlistSource,
   ParsedYoutubeUrl,
 } from "./allowlist/types.js";
-export { parseYoutubeUrl } from "./allowlist/youtubeUrlParser.js";
+export {
+  classifyYoutubeInput,
+  extractYoutubeUrl,
+  parseYoutubeUrl,
+  unstablePlaylistId,
+} from "./allowlist/youtubeUrlParser.js";
+export type { YoutubeChoice, YoutubeInput } from "./allowlist/youtubeUrlParser.js";
 export {
   classifyVideoProbe,
   noPlayableItem,

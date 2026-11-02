@@ -18,6 +18,7 @@ import type { SqliteKv } from "../data/sqliteKv";
 import { addActivityResumeListener, deviceTime } from "../time/deviceTime";
 import { handlePhoneRequest, phoneChannelId } from "../phone/linkHandler";
 import { lookupOEmbed } from "../phone/oEmbed";
+import { createPhoneCatalog } from "../phone/youtubeCatalog";
 import { startPhoneLink } from "../phone/phoneLink";
 import { loadCursor, saveCursor as saveAllowlistCursor } from "../player/cursorStore";
 
@@ -191,7 +192,7 @@ export function useAppSession(): SessionApi {
               body: event.body,
               entryId: event.entryId,
             },
-            { now: Date.now(), lookup: lookupOEmbed },
+            { now: Date.now(), lookup: lookupOEmbed, catalog: createPhoneCatalog() },
             {
               snapshot: () => {
                 const snap = session.engine.snapshot(deviceTime());

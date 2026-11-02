@@ -19,6 +19,46 @@ function repo(): AllowlistRepository {
 const now = 1_700_000_000_000;
 
 describe("handleLinkRequest", () => {
+  it("looks up a shared playlist link before anything is saved", async () => {
+    const allowlist = repo();
+    const found = await handleLinkRequest(
+      allowlist,
+      {
+        method: "POST",
+        route: "find",
+        body: JSON.stringify({
+          text: "Little Bear\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLtest123",
+        }),
+        entryId: "",
+      },
+      {
+        now,
+        catalog: {
+          video: async () => ({
+            title: "One episode",
+            thumbnailUrl: null,
+            detail: null,
+          }),
+          playlist: async () => ({
+            title: "The show",
+            thumbnailUrl: null,
+            detail: null,
+          }),
+          channelUploads: async () => null,
+          search: async () => [],
+          library: async () => ({ connected: false, cards: [] }),
+        },
+      },
+    );
+    expect(found.status).toBe(200);
+    expect(JSON.parse(found.body).cards.map((card: { kind: string; title: string }) => [card.kind, card.title])).toEqual([
+      ["Playlist", "The show"],
+      ["Video", "One episode"],
+    ]);
+    expect(allowlist.list()).toHaveLength(0);
+  });
+
+
   it("adds a watch URL and lists the canonical link", async () => {
     const allowlist = repo();
     const added = await handleLinkRequest(
