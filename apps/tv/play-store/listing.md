@@ -30,6 +30,6 @@ clearing app data or changing the device clock.
 YouTube playback requires an internet connection. YouTube and the YouTube
 logo are trademarks of Google LLC.
 
-## Release notes — 1.2.7 (11)
+## Release notes — 1.2.8 (16)
 
-Initial Google Play release of LittlePlay for Android TV.
+Tap a channel on the phone to change what is playing. Parents can look up a show by link or name before adding it.

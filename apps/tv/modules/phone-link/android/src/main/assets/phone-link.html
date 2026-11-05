@@ -84,6 +84,21 @@
         padding: 0.9rem 1rem;
         margin-bottom: 0.65rem;
       }
+      li.channel {
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition:
+          background-color 180ms ease,
+          border-color 180ms ease,
+          transform 160ms var(--ease-out);
+      }
+      li.channel:active {
+        transform: scale(0.98);
+      }
+      li.channel.is-on {
+        border-color: #ff7657;
+        background: #1a2740;
+      }
       .row {
         display: flex;
         justify-content: space-between;
@@ -311,20 +326,6 @@
         margin: 0;
         text-align: right;
       }
-      .current {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        font-size: 0.85rem;
-        font-weight: 700;
-        white-space: nowrap;
-        padding: 0.35rem 0.55rem;
-        border-radius: 0.7rem;
-      }
-      .current:has(input:checked) {
-        background: #ff7657;
-        color: #0a101c;
-      }
       .actions {
         display: flex;
         flex-direction: column;
@@ -338,7 +339,8 @@
         }
         .tab-pill,
         button,
-        .tabs button {
+        .tabs button,
+        li.channel {
           transition: none;
         }
         .saved {
@@ -526,7 +528,22 @@
           return;
         }
         for (const link of links) {
+          const on = link.id === shownId;
           const item = document.createElement("li");
+          item.className = on ? "channel is-on" : "channel";
+          item.setAttribute("role", "button");
+          item.tabIndex = 0;
+          item.setAttribute("aria-pressed", on ? "true" : "false");
+          item.addEventListener("click", function (event) {
+            const target = event.target;
+            if (target.closest("button, a")) return;
+            selectCurrent(link.id);
+          });
+          item.addEventListener("keydown", function (event) {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            selectCurrent(link.id);
+          });
           const row = document.createElement("div");
           row.className = "row";
           const copy = document.createElement("div");
@@ -544,18 +561,6 @@
           copy.append(kind, title, anchor);
           const actions = document.createElement("div");
           actions.className = "actions";
-          const current = document.createElement("label");
-          current.className = "current";
-          const radio = document.createElement("input");
-          radio.type = "radio";
-          radio.name = "current";
-          radio.checked = link.id === shownId;
-          radio.addEventListener("change", function () {
-            if (radio.checked) selectCurrent(link.id);
-          });
-          const currentText = document.createElement("span");
-          currentText.textContent = "Current";
-          current.append(radio, currentText);
           const remove = document.createElement("button");
           remove.type = "button";
           remove.className = "remove";
@@ -563,7 +568,7 @@
           remove.addEventListener("click", function () {
             removeLink(link.id);
           });
-          actions.append(current, remove);
+          actions.append(remove);
           row.append(copy, actions);
           item.appendChild(row);
           listEl.appendChild(item);
