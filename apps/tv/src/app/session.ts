@@ -22,12 +22,7 @@ import { createPhoneCatalog } from "../phone/youtubeCatalog";
 import { startPhoneLink } from "../phone/phoneLink";
 import { loadCursor, saveCursor as saveAllowlistCursor } from "../player/cursorStore";
 
-export type WizardStep =
-  | "welcome"
-  | "timerSetup"
-  | "curated"
-  | "choose"
-  | null;
+export type WizardStep = "timerSetup" | null;
 
 export type AppSession = {
   engine: TimerEngine;
@@ -71,13 +66,8 @@ export type SessionApi = {
   resetCycle: () => string | null;
   openSettings: () => void;
   closeSettings: () => void;
-  startSetup: () => void;
   openChoose: () => void;
   closeContent: () => void;
-  goWizardCurated: () => void;
-  goWizardChoose: () => void;
-  finishWizard: () => void;
-  onAllowlistSaved: (entries: AllowlistEntry[]) => void;
   onPlaylistsUpdated: (entries: AllowlistEntry[]) => void;
   phoneUrl: string | null;
   phoneLinkOffline: boolean;
@@ -93,7 +83,6 @@ export function useAppSession(): SessionApi {
   const sessionRef = useRef<AppSession | null>(null);
   const [snapshot, setSnapshot] = useState<TimerSnapshot | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
-  const [wizardStep, setWizardStep] = useState<WizardStep>("welcome");
   const [showSettings, setShowSettings] = useState(false);
   const [contentRoute, setContentRoute] = useState<ContentRoute>(null);
   const [allowlistEntries, setAllowlistEntries] = useState<AllowlistEntry[]>(
@@ -163,9 +152,6 @@ export function useAppSession(): SessionApi {
       setAllowlistEntries(session.allowlist.list());
       setAllowlistRepo(session.allowlist);
       persistAll();
-      if (event.snapshot.phase !== "Setup") {
-        setWizardStep(null);
-      }
     } catch (err) {
       setBootError(err instanceof Error ? err.message : String(err));
     }
@@ -240,11 +226,13 @@ export function useAppSession(): SessionApi {
     };
   }, []);
 
+  const onSetup = snapshot?.phase === "Setup";
+
   useEffect(() => {
-    if (!showSettings) return;
+    if (!showSettings && !onSetup) return;
     phoneLinkWanted.current = true;
     publishPhoneLink();
-  }, [showSettings, allowlistRepo, publishPhoneLink]);
+  }, [showSettings, onSetup, allowlistRepo, publishPhoneLink]);
 
   useEffect(() => {
     const onResume = () => tickNow();
@@ -288,7 +276,6 @@ export function useAppSession(): SessionApi {
           : result.error.kind;
       }
       applyEvent(result.event, true);
-      setWizardStep("curated");
       return null;
     },
     [applyEvent],
@@ -345,11 +332,7 @@ export function useAppSession(): SessionApi {
   }, [applyEvent]);
 
   const effectiveWizard: WizardStep =
-    snapshot?.phase === "Setup"
-      ? (wizardStep ?? "welcome")
-      : wizardStep === "curated" || wizardStep === "choose"
-        ? wizardStep
-        : null;
+    snapshot?.phase === "Setup" ? "timerSetup" : null;
 
   return {
     snapshot,
@@ -373,18 +356,8 @@ export function useAppSession(): SessionApi {
       setShowSettings(false);
       setContentRoute(null);
     },
-    startSetup: () => setWizardStep("timerSetup"),
     openChoose: () => setContentRoute("choose"),
     closeContent: () => setContentRoute(null),
-    goWizardCurated: () => setWizardStep("curated"),
-    goWizardChoose: () => setWizardStep("choose"),
-    finishWizard: () => setWizardStep(null),
-    onAllowlistSaved: (entries) => {
-      setAllowlistEntries(entries);
-      setWizardStep(null);
-      setContentRoute(null);
-      setShowSettings(false);
-    },
     onPlaylistsUpdated: (entries) => {
       setAllowlistEntries(entries);
       setContentRoute(null);

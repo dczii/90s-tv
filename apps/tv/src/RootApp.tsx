@@ -6,7 +6,6 @@ import { moveTaskToBack } from "youtube-player";
 import { useAppSession } from "./app/session";
 import { usePlayerSession } from "./player/PlayerSession";
 import { usePlaybackController } from "./player/usePlaybackController";
-import { WelcomeScreen } from "./ui/screens/WelcomeScreen";
 import { TimerSetupScreen } from "./ui/screens/TimerSetupScreen";
 import {
   PlayingShell,
@@ -14,7 +13,6 @@ import {
   RestScreen,
 } from "./ui/screens/PhaseScreens";
 import { ParentSettingsScreen } from "./ui/screens/ParentSettingsScreen";
-import { CuratedPlaylistsScreen } from "./ui/screens/CuratedPlaylistsScreen";
 import { ChooseContentScreen } from "./ui/screens/ChooseContentScreen";
 import { colors } from "./theme/tokens";
 import { duration, EASE_OUT } from "./theme/motion";
@@ -90,9 +88,7 @@ export default function RootApp() {
     );
   }
 
-  const showCuratedIntro = session.wizardStep === "curated";
-  const showChoose =
-    session.wizardStep === "choose" || session.contentRoute === "choose";
+  const showChoose = session.contentRoute === "choose";
 
   let screenKey = "boot";
   let screen = (
@@ -101,26 +97,14 @@ export default function RootApp() {
     </ScreenShell>
   );
 
-  if (showCuratedIntro) {
-    screenKey = "wizard-curated";
-    screen = <CuratedPlaylistsScreen onContinue={session.goWizardChoose} />;
-  } else if (showChoose && session.allowlistRepo) {
-    screenKey =
-      session.contentRoute === "choose" ? "content-choose" : "wizard-choose";
+  if (showChoose && session.allowlistRepo) {
+    screenKey = "content-choose";
     screen = (
       <ChooseContentScreen
         allowlist={session.allowlistRepo}
-        mode={session.contentRoute === "choose" ? "manage" : "wizard"}
-        onSaved={
-          session.contentRoute === "choose"
-            ? session.onPlaylistsUpdated
-            : session.onAllowlistSaved
-        }
-        onBack={
-          session.contentRoute === "choose"
-            ? session.closeContent
-            : session.goWizardCurated
-        }
+        mode="manage"
+        onSaved={session.onPlaylistsUpdated}
+        onBack={session.closeContent}
       />
     );
   } else if (session.showSettings && session.snapshot.phase !== "Playing") {
@@ -137,13 +121,14 @@ export default function RootApp() {
         phoneLinkOffline={session.phoneLinkOffline}
       />
     );
-  } else if (session.wizardStep === "welcome") {
-    screenKey = "wizard-welcome";
-    screen = <WelcomeScreen onStart={session.startSetup} />;
   } else if (session.wizardStep === "timerSetup") {
     screenKey = "wizard-timer";
     screen = (
-      <TimerSetupScreen onSave={session.completeSetup} />
+      <TimerSetupScreen
+        onSave={session.completeSetup}
+        phoneUrl={session.phoneUrl}
+        phoneLinkOffline={session.phoneLinkOffline}
+      />
     );
   } else if (session.snapshot.phase === "AwaitingConfirmation") {
     screenKey = "phase-ready";

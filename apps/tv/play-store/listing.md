@@ -30,6 +30,6 @@ clearing app data or changing the device clock.
 YouTube playback requires an internet connection. YouTube and the YouTube
 logo are trademarks of Google LLC.
 
-## Release notes — 1.2.8 (16)
+## Release notes — 1.2.9 (17)
 
-Tap a channel on the phone to change what is playing. Parents can look up a show by link or name before adding it.
+The first screen sets watch and break time and shows a QR code for adding shows from a phone.
