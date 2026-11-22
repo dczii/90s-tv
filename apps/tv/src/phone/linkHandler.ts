@@ -43,7 +43,10 @@ export type PhoneCatalog = {
     channelId: string | null;
     username: string | null;
   }) => Promise<ShowCard | null>;
-  search: (query: string) => Promise<ShowCard[]>;
+  search: (
+    query: string,
+    pageToken?: string | null,
+  ) => Promise<ShowCard[] | { cards: ShowCard[]; nextPageToken: string | null }>;
   library: () => Promise<{ connected: boolean; cards: ShowCard[] }>;
 };
 
@@ -273,9 +276,14 @@ async function findShows(
   deps: LinkHandlerDeps,
 ): Promise<LinkHandlerResult> {
   let text = "";
+  let pageToken: string | null = null;
   try {
-    const parsed = JSON.parse(rawBody) as { text?: unknown };
+    const parsed = JSON.parse(rawBody) as { text?: unknown; pageToken?: unknown };
     text = typeof parsed.text === "string" ? parsed.text : "";
+    pageToken =
+      typeof parsed.pageToken === "string" && parsed.pageToken.trim()
+        ? parsed.pageToken.trim()
+        : null;
   } catch {
     return json(400, { error: "Paste a YouTube link or type a show name." });
   }
@@ -288,9 +296,13 @@ async function findShows(
 
   try {
     if (classified.kind === "search") {
-      const cards = await deps.catalog.search(classified.query);
-      if (cards.length === 0) return json(200, { cards: [], error: "No shows found." });
-      return json(200, { cards });
+      const found = await deps.catalog.search(classified.query, pageToken);
+      const cards = Array.isArray(found) ? found : found.cards;
+      const nextPageToken = Array.isArray(found) ? null : found.nextPageToken;
+      if (cards.length === 0 && !pageToken) {
+        return json(200, { cards: [], nextPageToken: null, error: "No shows found." });
+      }
+      return json(200, { cards, nextPageToken });
     }
     if (classified.kind === "channel") {
       const card = await deps.catalog.channelUploads(classified);

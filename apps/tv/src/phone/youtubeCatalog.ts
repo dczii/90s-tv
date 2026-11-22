@@ -69,10 +69,13 @@ export function createPhoneCatalog(): PhoneCatalog {
       return card(row.id, "Playlist", row.title, row.thumbnailUrl);
     },
 
-    async search(query) {
-      const rows = await searchShows(query, apiKey, config.apiKey);
-      if (!Array.isArray(rows)) throw failure(rows);
-      return rows.map((hit) => card(hit.id, hit.kind, hit.title, hit.thumbnailUrl));
+    async search(query, pageToken) {
+      const rows = await searchShows(query, apiKey, config.apiKey, {}, pageToken);
+      if (!("hits" in rows)) throw failure(rows);
+      return {
+        cards: rows.hits.map((hit) => card(hit.id, hit.kind, hit.title, hit.thumbnailUrl)),
+        nextPageToken: rows.nextPageToken,
+      };
     },
 
     async library() {

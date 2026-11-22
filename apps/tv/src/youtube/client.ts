@@ -37,6 +37,20 @@ export type CatalogItem = {
   uploadsPlaylistId?: string;
 };
 
+/**
+ * YouTube `regionRestriction.blocked` lists countries where a video is
+ * unavailable. It is not a worldwide ban: `blocked: ["RU","US"]` still
+ * plays everywhere else. The device locale is not the viewer country
+ * (YouTube uses the network address), so a partial block or allow list
+ * is left to the player, which skips the video if YouTube refuses it.
+ * `allowed: []` means nowhere, and that is a real skip.
+ */
+export function isRegionBlocked(
+  region: { blocked?: string[]; allowed?: string[] } | null | undefined,
+): boolean {
+  return Boolean(region?.allowed && region.allowed.length === 0);
+}
+
 export type VideoMetadata = {
   id: string;
   title: string;
@@ -315,10 +329,8 @@ export async function fetchVideoMetadata(
         missing: true,
       };
     }
-    const region = item.contentDetails?.regionRestriction;
-    const regionBlocked = Boolean(
-      region?.blocked?.length ||
-        (region?.allowed && region.allowed.length === 0),
+    const regionBlocked = isRegionBlocked(
+      item.contentDetails?.regionRestriction,
     );
     return {
       id,
@@ -368,28 +380,31 @@ export type SearchHit = {
   thumbnailUrl: string | null;
 };
 
-/** search.list — public videos and playlists. 100 quota units per call. */
+export type SearchPage = {
+  hits: SearchHit[];
+  nextPageToken: string | null;
+};
+
+/** search.list — 20 public videos and playlists per page. 100 quota units per call. */
 export async function searchShows(
   query: string,
   auth: AuthMode,
   apiKey: string,
   opts: YoutubeRequestOpts = {},
-): Promise<SearchHit[] | YoutubeApiError> {
-  const res = await youtubeFetch(
-    "search",
-    {
-      part: "snippet",
-      q: query,
-      type: "video,playlist",
-      maxResults: "6",
-      safeSearch: "moderate",
-    },
-    auth,
-    apiKey,
-    opts,
-  );
+  pageToken?: string | null,
+): Promise<SearchPage | YoutubeApiError> {
+  const params: Record<string, string> = {
+    part: "snippet",
+    q: query,
+    type: "video,playlist",
+    maxResults: "20",
+    safeSearch: "moderate",
+  };
+  if (pageToken) params.pageToken = pageToken;
+  const res = await youtubeFetch("search", params, auth, apiKey, opts);
   if (!isHttpResponse(res)) return res;
   const json = (await res.json().catch(() => ({}))) as {
+    nextPageToken?: string;
     items?: Array<{
       id?: { videoId?: string; playlistId?: string };
       snippet?: Record<string, unknown>;
@@ -411,7 +426,10 @@ export async function searchShows(
       thumbnailUrl: thumbFromSnippet(item.snippet),
     });
   }
-  return hits;
+  return {
+    hits,
+    nextPageToken: json.nextPageToken ?? null,
+  };
 }
 
 /** channels.list — turn a handle, id, or legacy username into the uploads playlist. */

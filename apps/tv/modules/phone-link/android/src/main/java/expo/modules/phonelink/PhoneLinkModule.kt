@@ -1,5 +1,7 @@
 package expo.modules.phonelink
 
+import android.content.Context
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import expo.modules.kotlin.modules.Module
@@ -98,7 +100,29 @@ class PhoneLinkModule : Module() {
   private fun loadHtml(): String {
     val context = appContext.reactContext
       ?: throw IllegalStateException("React context lost")
-    return context.assets.open("phone-link.html").bufferedReader().use { it.readText() }
+    val html = context.assets.open("phone-link.html").bufferedReader().use { it.readText() }
+    return html.replace("{{APP_VERSION}}", htmlEscape(appVersionLabel(context)))
+  }
+
+  /** Same shape as Parent settings: versionName and versionCode, e.g. "1.2.9 (17)". */
+  @Suppress("DEPRECATION")
+  private fun appVersionLabel(context: Context): String {
+    val info = context.packageManager.getPackageInfo(context.packageName, 0)
+    val name = info.versionName?.trim().orEmpty().ifEmpty { "Unknown" }
+    val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      info.longVersionCode
+    } else {
+      @Suppress("DEPRECATION")
+      info.versionCode.toLong()
+    }
+    return "$name ($code)"
+  }
+
+  private fun htmlEscape(value: String): String {
+    return value
+      .replace("&", "&amp;")
+      .replace("<", "&lt;")
+      .replace(">", "&gt;")
   }
 
   private fun lanIpv4(): String {
