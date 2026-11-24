@@ -34,6 +34,7 @@ import { PRODUCT_NAME, type TimerSnapshot } from "@littleplay/core";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { YoutubePlayerView } from "youtube-player";
 import { QuietLink, TvButton } from "../components/TvButton";
+import { usePressScale } from "../motion/usePressScale";
 import { BrandRow, ScreenHeader, ScreenShell } from "../components/ScreenChrome";
 import { colors, useLayout } from "../../theme/tokens";
 import {
@@ -352,23 +353,90 @@ function TransportButton({
   disabled?: boolean;
 }) {
   const { s } = useLayout();
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale();
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [
-        styles.transportHit,
-        {
-          borderRadius: s(12),
-          paddingVertical: s(10),
-          paddingHorizontal: s(16),
-          opacity: disabled ? 0.45 : pressed ? 0.8 : 1,
-        },
-      ]}
+      style={[styles.transportHit, disabled && styles.transportDisabled]}
     >
-      <Text style={[styles.transportLabel, { fontSize: s(18) }]}>{label}</Text>
+      <Animated.View
+        style={[
+          styles.transportInner,
+          {
+            borderRadius: s(12),
+            paddingVertical: s(10),
+            paddingHorizontal: s(16),
+          },
+          animatedStyle,
+        ]}
+      >
+        <Text style={[styles.transportLabel, { fontSize: s(18) }]}>{label}</Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+function ChannelChip({
+  number,
+  title,
+  selected,
+  onPress,
+}: {
+  number: string;
+  title: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { s } = useLayout();
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale();
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`Channel ${number}, ${title}`}
+    >
+      <Animated.View
+        style={[
+          styles.channelChip,
+          selected && styles.channelChipOn,
+          {
+            borderRadius: s(12),
+            paddingVertical: s(8),
+            paddingHorizontal: s(12),
+            gap: s(8),
+            maxWidth: s(220),
+          },
+          animatedStyle,
+        ]}
+      >
+        <Text
+          style={[
+            styles.channelChipNum,
+            selected && styles.channelChipNumOn,
+            { fontSize: s(16) },
+          ]}
+        >
+          {number}
+        </Text>
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.channelChipTitle,
+            selected && styles.channelChipTitleOn,
+            { fontSize: s(16) },
+          ]}
+        >
+          {title}
+        </Text>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -649,6 +717,12 @@ export function PlayingShell({
     tuneRef.current(next.entryId);
   }, []);
 
+  const selectChannel = useCallback((entryId: string) => {
+    if (entryId === activeRef.current) return;
+    activeRef.current = entryId;
+    tuneRef.current(entryId);
+  }, []);
+
   const togglePause = useCallback(() => {
     if (paused) {
       void player.play();
@@ -671,7 +745,9 @@ export function PlayingShell({
   const lipPad = s(6);
   const chinMinH = Math.max(s(56), chinH);
   const showTransport = touchPlayback && !settingsOpen;
-  const transportH = showTransport ? s(64) : 0;
+  const showChannelPicker = showTransport && channels.length > 0;
+  const transportH =
+    (showTransport ? s(56) : 0) + (showChannelPicker ? s(52) : 0);
   // Everything around the 16:9 glass: padding, gap, chin, and the 1px
   // bezel and lip borders on each edge.
   const borders = 2 * (styles.bezel.borderWidth + styles.lip.borderWidth);
@@ -769,7 +845,7 @@ export function PlayingShell({
                   >
                     {channels.length > 1
                       ? touchPlayback
-                        ? "This watch window keeps counting down. Previous or next changes the channel."
+                        ? "This watch window keeps counting down. Tap a channel to change it."
                         : "This watch window keeps counting down. Left or right changes the channel."
                       : "This watch window keeps counting down. Rest starts when time runs out."}
                   </Text>
@@ -917,21 +993,40 @@ export function PlayingShell({
           </View>
         </View>
         {showTransport ? (
-          <View style={[styles.transport, { gap: s(8), minHeight: transportH }]}>
-            <TransportButton
-              label="Previous"
-              disabled={channels.length < 2}
-              onPress={() => stepBy(-1)}
-            />
-            <TransportButton
-              label={paused ? "Play" : "Pause"}
-              onPress={togglePause}
-            />
-            <TransportButton
-              label="Next"
-              disabled={channels.length < 2}
-              onPress={() => stepBy(1)}
-            />
+          <View style={[styles.transportCol, { gap: s(8), minHeight: transportH }]}>
+            {showChannelPicker ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={[styles.channelRow, { gap: s(8) }]}
+              >
+                {channels.map((channel) => (
+                  <ChannelChip
+                    key={channel.entryId}
+                    number={formatChannelNumber(channel.number)}
+                    title={channel.title}
+                    selected={channel.entryId === channelEntryId}
+                    onPress={() => selectChannel(channel.entryId)}
+                  />
+                ))}
+              </ScrollView>
+            ) : null}
+            <View style={[styles.transport, { gap: s(8) }]}>
+              <TransportButton
+                label="Previous"
+                disabled={channels.length < 2}
+                onPress={() => stepBy(-1)}
+              />
+              <TransportButton
+                label={paused ? "Play" : "Pause"}
+                onPress={togglePause}
+              />
+              <TransportButton
+                label="Next"
+                disabled={channels.length < 2}
+                onPress={() => stepBy(1)}
+              />
+            </View>
           </View>
         ) : null}
         <View
@@ -1076,17 +1171,40 @@ const styles = StyleSheet.create({
     zIndex: 8,
     backgroundColor: "transparent",
   },
+  transportCol: { alignSelf: "stretch" },
   transport: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  transportHit: {
+  transportHit: { alignSelf: "center" },
+  transportDisabled: { opacity: 0.45 },
+  transportInner: {
     borderWidth: 1,
     borderColor: colors.white20,
     backgroundColor: colors.panel2,
   },
   transportLabel: { color: colors.offWhite, fontWeight: "700" },
+  channelRow: { alignItems: "center", paddingHorizontal: 2 },
+  channelChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.white20,
+    backgroundColor: colors.panel2,
+  },
+  channelChipOn: {
+    borderColor: colors.coral,
+    backgroundColor: colors.coral,
+  },
+  channelChipNum: {
+    color: colors.amber,
+    fontFamily: "monospace",
+    fontWeight: "700",
+  },
+  channelChipNumOn: { color: colors.navy },
+  channelChipTitle: { color: colors.offWhite, fontWeight: "600", flexShrink: 1 },
+  channelChipTitleOn: { color: colors.navy },
   bezel: {
     backgroundColor: TUBE.bezel,
     borderWidth: 1,

@@ -1,5 +1,13 @@
 import { useState, type ReactNode } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Constants from "expo-constants";
 import QRCode from "react-native-qrcode-svg";
 import { ENFORCEMENT_NOTE, type TimerSnapshot } from "@littleplay/core";
@@ -48,6 +56,7 @@ export function ParentSettingsScreen({
   phoneLinkOffline,
 }: Props) {
   const { s, compact } = useLayout();
+  const touchDevice = (Platform as { isTV?: boolean }).isTV !== true;
   const [watchMin, setWatchMin] = useState(
     Math.round(snapshot.policy.watchDurationMs / 60_000),
   );
@@ -162,6 +171,21 @@ export function ParentSettingsScreen({
               >
                 CONTENT
               </Text>
+              {touchDevice ? (
+                <View style={{ gap: s(10), marginBottom: s(6) }}>
+                  <Text
+                    style={[styles.howTo, { fontSize: s(16), lineHeight: s(22) }]}
+                  >
+                    A channel is one show you allow. Tap Add a channel, pick a
+                    show, then save. Channels play in the order you save them.
+                  </Text>
+                  <TvButton
+                    label="Add a channel"
+                    stretch
+                    onPress={onManageContent}
+                  />
+                </View>
+              ) : null}
               <Pressable
                 onPress={onManageContent}
                 style={({ focused }) => [
@@ -454,6 +478,7 @@ const styles = StyleSheet.create({
     color: colors.offWhite,
     fontWeight: "600",
   },
+  howTo: { color: colors.muted, fontWeight: "500" },
   error: { color: colors.amber },
   note: { color: colors.muted, opacity: 0.8 },
 });
