@@ -178,6 +178,9 @@ class YoutubePlayerView(context: Context, appContext: AppContext) : ExpoView(con
     wv.settings.mediaPlaybackRequiresUserGesture = false
     wv.isFocusable = false
     wv.isFocusableInTouchMode = false
+    // The glass draws its own controls. A tap must not reach iframe seek
+    // or related videos. D-pad still goes to the focus sink, not this view.
+    wv.setOnTouchListener { _, _ -> true }
     wv.clipToOutline = true
     wv.setBackgroundColor(Color.BLACK)
     wv.addJavascriptInterface(JsBridge(), "NativeBridge")

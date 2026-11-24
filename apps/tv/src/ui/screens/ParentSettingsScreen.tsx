@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { useState, type ReactNode } from "react";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Constants from "expo-constants";
 import QRCode from "react-native-qrcode-svg";
 import { ENFORCEMENT_NOTE, type TimerSnapshot } from "@littleplay/core";
@@ -47,7 +47,7 @@ export function ParentSettingsScreen({
   phoneUrl,
   phoneLinkOffline,
 }: Props) {
-  const { s } = useLayout();
+  const { s, compact } = useLayout();
   const [watchMin, setWatchMin] = useState(
     Math.round(snapshot.policy.watchDurationMs / 60_000),
   );
@@ -73,7 +73,14 @@ export function ParentSettingsScreen({
   return (
     <ScreenShell accessibilityLabel="Parent settings">
       <ScreenHeader section="Settings" title="Parent settings" />
-      <View style={[styles.columns, { gap: s(24), marginTop: s(12) }]}>
+      <MaybeScroll compact={compact}>
+      <View
+        style={[
+          styles.columns,
+          compact && styles.columnsCompact,
+          { gap: s(24), marginTop: s(12) },
+        ]}
+      >
         <View
           style={[
             styles.mainPanel,
@@ -90,7 +97,13 @@ export function ParentSettingsScreen({
               <Text style={[styles.sectionLabel, { fontSize: s(16) }]}>
                 WATCH & BREAK
               </Text>
-              <View style={[styles.steppers, { gap: s(16) }]}>
+              <View
+                style={[
+                  styles.steppers,
+                  compact && styles.steppersCompact,
+                  { gap: s(16) },
+                ]}
+              >
                 <DurationStepper
                   label="Watch time"
                   tone="watch"
@@ -184,6 +197,7 @@ export function ParentSettingsScreen({
               <View
                 style={[
                   styles.phoneRow,
+                  compact && styles.phoneRowCompact,
                   { gap: s(16), marginTop: s(8), marginBottom: s(4) },
                 ]}
               >
@@ -196,11 +210,11 @@ export function ParentSettingsScreen({
                         overflow: "hidden",
                       },
                     ]}
-                    accessibilityLabel="QR code to edit YouTube links on your phone"
+                    accessibilityLabel="QR code to edit YouTube links from another device"
                   >
                     <QRCode
                       value={phoneUrl}
-                      size={s(240)}
+                      size={compact ? 112 : s(240)}
                       color={colors.navy}
                       backgroundColor={colors.offWhite}
                       quietZone={4}
@@ -214,8 +228,8 @@ export function ParentSettingsScreen({
                   ]}
                 >
                   {phoneLinkOffline
-                    ? "Connect the TV to Wi‑Fi"
-                    : "Same Wi‑Fi. Scan to add or remove YouTube links."}
+                    ? "Connect to Wi‑Fi"
+                    : "Same Wi‑Fi. Scan from another device to add or remove YouTube links."}
                 </Text>
               </View>
               <Divider />
@@ -258,7 +272,9 @@ export function ParentSettingsScreen({
             </>
           )}
         </View>
-        <View style={[styles.sideCol, { gap: s(16), flex: 0.85 }]}>
+        <View
+          style={[styles.sideCol, { gap: s(16) }, compact ? null : { flex: 0.85 }]}
+        >
           <View
             style={[
               styles.cycleCard,
@@ -302,7 +318,23 @@ export function ParentSettingsScreen({
           </Text>
         </View>
       </View>
+      </MaybeScroll>
     </ScreenShell>
+  );
+}
+
+function MaybeScroll({
+  compact,
+  children,
+}: {
+  compact: boolean;
+  children: ReactNode;
+}) {
+  if (!compact) return children;
+  return (
+    <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      {children}
+    </ScrollView>
   );
 }
 
@@ -354,10 +386,16 @@ function Divider() {
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1, minHeight: 0 },
   columns: {
     flex: 1,
     flexDirection: "row",
     minHeight: 0,
+  },
+  columnsCompact: {
+    flex: 0,
+    flexGrow: 0,
+    flexDirection: "column",
   },
   mainPanel: {
     backgroundColor: colors.panel,
@@ -367,6 +405,7 @@ const styles = StyleSheet.create({
   },
   editBlock: { minHeight: 0 },
   steppers: { flexDirection: "row", minHeight: 0, maxHeight: "58%" },
+  steppersCompact: { flexDirection: "column", maxHeight: undefined },
   sideCol: { minWidth: 0 },
   cycleCard: {
     backgroundColor: colors.panel,
@@ -402,6 +441,10 @@ const styles = StyleSheet.create({
   phoneRow: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  phoneRowCompact: {
+    flexDirection: "column",
+    alignItems: "flex-start",
   },
   qrCard: {
     backgroundColor: colors.offWhite,

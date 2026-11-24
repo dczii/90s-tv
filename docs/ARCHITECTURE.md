@@ -158,7 +158,7 @@ Adding a fourth local module is an architecture amendment, not a drive-by.
 
 Rejected: `react-native-quick-crypto`. Rejected: `react-native-webview` for
 the player (`YT-D20` origin). Rejected: `expo-router` (BACK would pop
-rest). Rejected: a phone target “for faster iteration.”
+rest). Rejected: a second phone app or an iOS target. Phones and tablets install this Android app.
 
 ---
 
@@ -215,10 +215,10 @@ Do not rewrite them here. `YT-D8`–`YT-D29` remain law for later steps.
 
 | ID | Decision | Lock |
 |---|---|---|
-| **RN-D1** | Stack | Expo CNG + `react-native-tvos` matching the pinned Expo SDK + `@react-native-tvos/config-tv` with `isTV: true` and `androidTVRequired: true`. No Expo Go. No phone. No Apple TV in v1. New Architecture on (Fabric + Hermes). |
+| **RN-D1** | Stack | Expo CNG + `react-native-tvos` matching the pinned Expo SDK + `@react-native-tvos/config-tv` with `isTV: true` and `androidTVRequired: false`. One Android app for phones, tablets, and TV. No Expo Go. No Apple TV and no iOS target. New Architecture on (Fabric + Hermes). |
 | **RN-D2** | Domain package | `packages/core` TypeScript. No `react` / `react-native` / `expo*`. Vitest on Node. |
 | **RN-D3** | Native budget | Only `device-time`, `android-identity`, `youtube-player`. Fourth module = architecture change. |
-| **RN-D4** | Identity | `applicationId` `com.littleplay.tv`. `minSdk 24`. Leanback required, touchscreen not required, 320×180 banner. |
+| **RN-D4** | Identity | `applicationId` `com.littleplay.tv`. `minSdk 24`. Leanback optional, touchscreen not required, `LAUNCHER` and `LEANBACK_LAUNCHER`, 320×180 banner. |
 | **RN-D5** | Navigation | Phase-driven tree. No stack router. `BackHandler` cannot `finish` rest or confirmation. |
 | **RN-D6** | Gradle tree | Historical. Not compiled on this track. Do not port broadcast types. |
 | **RN-D7** | PIN KDF host | `@noble/hashes` PBKDF2-HMAC-SHA256 **in core** (async). Parameters as `YT-D10`. |
@@ -244,7 +244,7 @@ Current stable Expo SDK at writing is **57** (React Native 0.86, React
 |---|---|
 | Expo SDK | `expo@~57.0.13` (template-aligned; bump only with a TV-compat re-read) |
 | React Native TV | `react-native` alias `npm:react-native-tvos@0.86-stable` |
-| TV plugin | `@react-native-tvos/config-tv` with `isTV: true`, `androidTVRequired: true` |
+| TV plugin | `@react-native-tvos/config-tv` with `isTV: true`, `androidTVRequired: false` |
 | Node (app / Expo CLI) | 22.13.x per Expo’s SDK 57 table. This host also has 22.12 via nvm. |
 | Node (`packages/core`) | 20+ is enough; Vitest must keep running without the Android SDK. |
 
@@ -257,7 +257,7 @@ Config plugin extras the TV plugin does not give us, via
 - `minSdk 24` (do not go below 24).
 - `touchscreen required=false`.
 - 320×180 `android:banner` (also passed as `androidTVBanner` to config-tv).
-- `LEANBACK_LAUNCHER` (confirm; TV plugin adds the TV intent).
+- `LEANBACK_LAUNCHER` and `LAUNCHER` (TV banner stays; phones and tablets get a normal launcher icon).
 - `FLAG_KEEP_SCREEN_ON` on the main activity.
 - Landscape locked.
 - `allowBackup=false`.
@@ -319,7 +319,7 @@ Retired with the broadcast product. Not applicable.
 | `react-native-tvos` version skew with Expo SDK | Pin from Expo’s TV guide at scaffold; do not `expo install` facebook RN |
 | CNG wipes custom activity flags | Local config plugin, not hand-edits in `android/` that `--clean` destroys |
 | Two `applicationId`s | RN-D4; `apps/tv` identity must stay `com.littleplay.tv` |
-| Phone prebuild (`EXPO_TV` unset / `isTV` false) | Plugin parameters force TV; do not generate a phone manifest |
+| Phone prebuild (`EXPO_TV` unset / `isTV` false) | Keep `isTV: true` so the TV banner and leanback launcher stay. `androidTVRequired: false` plus `LAUNCHER` is what makes the same manifest eligible for phones and tablets |
 | IFrame incompatible on D6 | Origin triage then platform blocker; halt; no fallback player |
 | This host mistaken for an SDK host | RN-D10; §13 |
 

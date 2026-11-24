@@ -8,6 +8,10 @@ const {
  * Leanback extras config-tv does not own: touchscreen not required,
  * allowBackup=false, landscape, FLAG_KEEP_SCREEN_ON (RN-D4, RN-D11).
  *
+ * Phones, tablets, and TVs share this manifest. Leanback stays optional,
+ * the phone launcher stays present, and screen-size filters cannot drop
+ * small or normal screens.
+ *
  * Listed first in app.json plugins so this wrapper is outermost and runs
  * after @react-native-tvos/config-tv (which strips orientation).
  */
@@ -33,12 +37,42 @@ function ensureUsesFeature(manifestXml, name, required) {
   }
 }
 
+function relaxRequiredFeature(manifestXml, name) {
+  const features = manifestXml.manifest["uses-feature"];
+  const list = !features ? [] : Array.isArray(features) ? features : [features];
+  for (const feature of list) {
+    if (feature.$["android:name"] === name && feature.$["android:required"] === "true") {
+      feature.$["android:required"] = "false";
+    }
+  }
+}
+
+function keepAllScreenSizes(manifestXml) {
+  const manifest = manifestXml.manifest;
+  delete manifest["compatible-screens"];
+  const supports = manifest["supports-screens"];
+  if (!supports) return;
+  const node = Array.isArray(supports) ? supports[0] : supports;
+  if (!node?.$) return;
+  node.$["android:smallScreens"] = "true";
+  node.$["android:normalScreens"] = "true";
+  node.$["android:largeScreens"] = "true";
+  node.$["android:xlargeScreens"] = "true";
+  node.$["android:anyDensity"] = "true";
+}
+
 function withLittlePlay(config) {
   config = withAndroidManifest(config, (mod) => {
     const manifestXml = mod.modResults;
     ensureUsesFeature(manifestXml, "android.hardware.touchscreen", false);
-    // Optional so Play still offers the app on TVs whose catalog omits leanback.
+    // Optional so Play offers the app on phones, tablets, and TVs whose
+    // catalog omits leanback.
     ensureUsesFeature(manifestXml, "android.software.leanback", false);
+    // screenOrientation=landscape implies this feature is required. Play then
+    // hides the app from devices that do not declare a landscape screen.
+    ensureUsesFeature(manifestXml, "android.hardware.screen.landscape", false);
+    relaxRequiredFeature(manifestXml, "android.hardware.type.television");
+    keepAllScreenSizes(manifestXml);
 
     const application = AndroidConfig.Manifest.getMainApplicationOrThrow(manifestXml);
     application.$["android:allowBackup"] = "false";
@@ -52,8 +86,8 @@ function withLittlePlay(config) {
       let categories = filter.category || [];
       if (!Array.isArray(categories)) categories = [categories];
       const names = new Set(categories.map((category) => category.$["android:name"]));
-      // Keep the phone launcher so Play offers the app on sticks its catalog
-      // does not classify as Android TV. Leanback launcher stays for real TVs.
+      // Phone launcher for phones, tablets, and sticks Play does not classify
+      // as Android TV. Leanback launcher stays for real TVs.
       names.add("android.intent.category.LAUNCHER");
       names.add("android.intent.category.LEANBACK_LAUNCHER");
       filter.category = [...names].map((name) => ({

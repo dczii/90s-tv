@@ -1,4 +1,4 @@
-import { useWindowDimensions } from "react-native";
+import { Platform, useWindowDimensions } from "react-native";
 
 /** Colors from designs/littleplay.pen */
 export const colors = {
@@ -28,6 +28,8 @@ export const safe = {
 const DESIGN_H = 1080;
 /** Keep the 1080p composition airy without making controls dominate at TV density. */
 const TV_UI_DENSITY = 0.82;
+/** Landscape phones sit under this. Tablets and TVs keep the 16:9 rows. */
+const COMPACT_HEIGHT = 500;
 
 export type LayoutMetrics = {
   width: number;
@@ -36,11 +38,14 @@ export type LayoutMetrics = {
   scale: number;
   safeX: number;
   safeY: number;
+  /** Landscape phone: stack rows. Televisions stay on the wide composition. */
+  compact: boolean;
   s: (designPx: number) => number;
 };
 
 export function useLayout(): LayoutMetrics {
   const { width, height } = useWindowDimensions();
+  const onTv = (Platform as { isTV?: boolean }).isTV === true;
   const viewportScale = Math.min(width / 1920, height / DESIGN_H);
   const scale = Math.min(viewportScale, 1) * TV_UI_DENSITY;
   return {
@@ -49,6 +54,7 @@ export function useLayout(): LayoutMetrics {
     scale,
     safeX: width * 0.05,
     safeY: height * 0.05,
+    compact: !onTv && height < COMPACT_HEIGHT,
     s: (designPx: number) => Math.max(10, Math.round(designPx * scale)),
   };
 }

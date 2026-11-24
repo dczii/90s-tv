@@ -58,16 +58,17 @@ data, or changing the TV clock.
   one optional Google session for `youtube.readonly`.
 - No pause/rewind DVR of the watch clock. Pause is a player control inside
   `Playing`; elapsed watch time still advances.
-- No phone app, no Apple TV, no companion device.
+- No separate phone app and no Apple TV. Phones and tablets use this same Android app. No iOS target.
 - CRT shaders, ads stripping, and “make the iframe ad-free” are out.
 
 ---
 
 ## 3. Target User
 
-**Parent + child on one Android TV.** The parent sets policy. The child uses
-Continue watching, the YouTube iframe controls, and nothing that changes
-policy. This replaces the technical operator who hosted a manifest URL.
+**Parent + child on one Android phone, tablet, or TV.** The parent sets
+policy. The child uses Continue watching, the in-app player controls, and
+nothing that changes policy. This replaces the technical operator who hosted
+a manifest URL.
 
 ---
 

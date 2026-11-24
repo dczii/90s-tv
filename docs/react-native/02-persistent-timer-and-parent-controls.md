@@ -258,7 +258,7 @@ Same named errors as YouTube-timer 02, plus:
 
 | Failure                                | Named result                                                                                          |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `device-time` missing on a phone build | Do not ship; Leanback required. Dev: throw at boot                                                    |
+| `device-time` missing                  | Do not ship. Dev: throw at boot. The module is required on phones, tablets, and TV                    |
 | sqlite open fails                      | Stay on a blocking error slate; do not pretend Setup with empty memory that will later overwrite disk |
 | `BOOT_COUNT` unavailable               | `bootCount = null`; wall-only recover; log                                                            |
 

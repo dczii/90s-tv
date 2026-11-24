@@ -101,6 +101,7 @@ function PlaylistCard({
   s: (n: number) => number;
 }) {
   const { animatedStyle, onPressIn, onPressOut } = usePressScale();
+  const { compact } = useLayout();
 
   return (
     <Pressable
@@ -110,6 +111,7 @@ function PlaylistCard({
       {...(preferFocus ? ({ hasTVPreferredFocus: true } as object) : {})}
       style={({ focused }) => [
         styles.card,
+        compact && styles.cardCompact,
         {
           borderRadius: s(20),
           padding: s(12),
@@ -164,7 +166,7 @@ export function ChooseContentScreen({
   onBack,
   mode = "wizard",
 }: Props) {
-  const { s } = useLayout();
+  const { s, compact } = useLayout();
   const [selected, setSelected] = useState<Map<string, AllowlistEntry>>(
     () =>
       new Map(
@@ -219,7 +221,9 @@ export function ChooseContentScreen({
         title={managing ? "Manage playlists" : "Choose playlists"}
         subtitle={
           managing
-            ? "Press OK to add or remove shows, then save your changes."
+            ? compact
+              ? "Tap a show to add or remove it, then save your changes."
+              : "Press OK to add or remove shows, then save your changes."
             : "Pick one or more shows. No YouTube sign-in needed."
         }
       />
@@ -297,6 +301,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     borderWidth: 4,
   },
+  cardCompact: { width: "48%" },
   cardInner: {},
   thumbWrap: {
     width: "100%",

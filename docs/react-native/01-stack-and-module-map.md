@@ -137,11 +137,11 @@ LittlePlay. Renaming the id is out of scope.
 |---|---|
 | App framework | Expo with continuous native generation |
 | React Native | `react-native` alias `npm:react-native-tvos@<sdk-matched-stable>` |
-| TV plugin | `@react-native-tvos/config-tv` with `isTV: true`, `androidTVRequired: true` |
+| TV plugin | `@react-native-tvos/config-tv` with `isTV: true`, `androidTVRequired: false` |
 | SDK | Current stable Expo SDK **at scaffold time**, pinned. Docs at writing used SDK 56 → `react-native-tvos@0.85-stable`. Re-read the [compatibility table](https://docs.expo.dev/guides/building-for-tv/) before pinning. |
 | New Architecture | On (Fabric + Hermes). Required by current tvos. |
 | Navigation | **None.** Phase-driven single tree. No `expo-router`, no stack. |
-| Phone / Apple TV | Out. `android.software.leanback required=true`. Do not generate an iOS target for v1. |
+| Phones and tablets | Same Android app. Leanback optional, `LAUNCHER` present. Do not generate an iOS target. |
 | Expo Go | Out. Dev builds / `npx expo run:android` only. |
 
 Template: `npx create-expo-app apps/tv -e with-tv` then move into the
@@ -153,7 +153,7 @@ Config plugin extras the TV plugin does not give us, via
 - `minSdk 24` (not Expo’s default if higher is fine; do not go below 24).
 - `touchscreen required=false`.
 - 320×180 `android:banner`.
-- `LEANBACK_LAUNCHER` (TV plugin adds TV intent; confirm banner + category).
+- `LEANBACK_LAUNCHER` and `LAUNCHER` (TV banner stays; phones and tablets get a normal launcher icon).
 - `FLAG_KEEP_SCREEN_ON` on the main activity (or `expo-keep-awake` activated
   for the whole session — same outcome; prefer the window flag so a JS
   exception cannot drop it).
@@ -161,8 +161,8 @@ Config plugin extras the TV plugin does not give us, via
 - `allowBackup=false`.
 
 Rejected: bare `react-native init` (we still need Expo modules for SQLite,
-SecureStore, and local native views). Rejected: targeting phone “for
-faster iteration” — D-pad and Leanback bugs will not show up.
+SecureStore, and local native views). Rejected: a second phone app. Phones
+and tablets install this Android build, and TV verification still uses a television.
 
 ### `packages/core` boundary (RN-D2)
 
@@ -232,10 +232,10 @@ later steps; this step does not reopen them.
 
 | ID | Decision | Lock |
 |---|---|---|
-| **RN-D1** | Stack | Expo CNG + `react-native-tvos` matching the pinned Expo SDK + `@react-native-tvos/config-tv` with `androidTVRequired: true`. No Expo Go. No phone. No Apple TV in v1. |
+| **RN-D1** | Stack | Expo CNG + `react-native-tvos` matching the pinned Expo SDK + `@react-native-tvos/config-tv` with `androidTVRequired: false`. One Android app for phones, tablets, and TV. No Expo Go. No Apple TV and no iOS target. |
 | **RN-D2** | Domain package | `packages/core` TypeScript. No `react` / `react-native` / `expo*`. Vitest on Node. |
 | **RN-D3** | Native budget | Only `device-time`, `android-identity`, `youtube-player`. Fourth module = architecture change. |
-| **RN-D4** | Identity | `applicationId` `com.littleplay.tv`. `minSdk 24`. Leanback required, touchscreen not required, 320×180 banner. |
+| **RN-D4** | Identity | `applicationId` `com.littleplay.tv`. `minSdk 24`. Leanback optional, touchscreen not required, `LAUNCHER` and `LEANBACK_LAUNCHER`, 320×180 banner. |
 | **RN-D5** | Navigation | Phase-driven tree. No stack router. `BackHandler` cannot `finish` rest or confirmation. |
 | **RN-D6** | Gradle tree | Historical. Not compiled on this track. Do not port broadcast types. |
 | **RN-D7** | PIN KDF host | `@noble/hashes` PBKDF2-HMAC-SHA256 **in core** (async). Not `expo-crypto` (no PBKDF2). Not `SecretKeyFactory` (would force a native module and API 26). Same parameters as YT-D10: 16-byte salt, 32-byte dk, 120_000 iterations, timing-safe compare. |
@@ -282,7 +282,7 @@ screens, deleting the Gradle tree (wait until Step 2 tests are green).
    in ARCHITECTURE §1.**
 3. **Do not add `react-native-webview` “to try YouTube quickly.”** That
    cements the wrong origin.
-4. **Do not enable a phone target** for convenience.
+4. **Do not add a second phone app or an iOS target.** Phones and tablets use this Android app.
 5. **Do not put `TimerEngine` in a React context as the source of truth.**
    Core stays a plain class; the app holds one instance.
 

@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, {
   Defs,
   LinearGradient,
@@ -98,14 +99,22 @@ export function ScreenShell({
   accessibilityLabel,
   atmosphere,
 }: ShellProps) {
-  const { safeX, safeY } = useLayout();
+  const { safeX, safeY, compact } = useLayout();
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.shell} accessibilityLabel={accessibilityLabel}>
       {atmosphere ? <ScreenAtmosphere variant={atmosphere} /> : null}
       <View
         style={[
           styles.safe,
-          { paddingHorizontal: safeX, paddingVertical: safeY },
+          compact
+            ? {
+                paddingLeft: safeX + insets.left,
+                paddingRight: safeX + insets.right,
+                paddingTop: safeY + insets.top,
+                paddingBottom: safeY + insets.bottom,
+              }
+            : { paddingHorizontal: safeX, paddingVertical: safeY },
         ]}
       >
         {children}

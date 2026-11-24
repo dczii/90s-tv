@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { BrandRow, ScreenShell } from "../components/ScreenChrome";
 import { TvButton } from "../components/TvButton";
 import { colors, useLayout } from "../../theme/tokens";
@@ -6,11 +6,15 @@ import { colors, useLayout } from "../../theme/tokens";
 type Props = { onStart: () => void };
 
 export function WelcomeScreen({ onStart }: Props) {
-  const { s } = useLayout();
-  return (
-    <ScreenShell accessibilityLabel="Welcome" atmosphere="welcome">
-      <BrandRow />
-      <View style={[styles.body, { gap: s(48) }]}>
+  const { s, compact } = useLayout();
+  const body = (
+      <View
+        style={[
+          styles.body,
+          compact && styles.bodyCompact,
+          { gap: s(compact ? 20 : 48) },
+        ]}
+      >
         <View style={[styles.copy, { gap: s(22) }]}>
           <Text
             style={[styles.headline, { fontSize: s(72), lineHeight: s(86) }]}
@@ -32,6 +36,7 @@ export function WelcomeScreen({ onStart }: Props) {
         <View
           style={[
             styles.preview,
+            compact && styles.previewCompact,
             { borderRadius: s(40), padding: s(28), gap: s(12) },
           ]}
         >
@@ -53,16 +58,37 @@ export function WelcomeScreen({ onStart }: Props) {
           </Text>
         </View>
       </View>
+  );
+  return (
+    <ScreenShell accessibilityLabel="Welcome" atmosphere="welcome">
+      <BrandRow />
+      {compact ? (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {body}
+        </ScrollView>
+      ) : (
+        body
+      )}
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1, minHeight: 0 },
+  scrollContent: { flexGrow: 1 },
   body: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     minHeight: 0,
+  },
+  bodyCompact: {
+    flexDirection: "column",
+    alignItems: "stretch",
   },
   copy: { flex: 1.15, minWidth: 0, justifyContent: "center" },
   headline: { color: colors.offWhite, fontWeight: "700" },
@@ -77,6 +103,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignSelf: "stretch",
     maxHeight: "72%",
+  },
+  previewCompact: {
+    flex: 0,
+    maxHeight: 220,
+    alignSelf: "stretch",
   },
   previewArt: {
     alignSelf: "stretch",

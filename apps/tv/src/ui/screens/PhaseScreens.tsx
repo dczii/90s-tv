@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AppState,
   Image,
+  Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TVEventControl,
@@ -28,6 +31,7 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 import { PRODUCT_NAME, type TimerSnapshot } from "@littleplay/core";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { YoutubePlayerView } from "youtube-player";
 import { QuietLink, TvButton } from "../components/TvButton";
 import { BrandRow, ScreenHeader, ScreenShell } from "../components/ScreenChrome";
@@ -92,14 +96,11 @@ export function ReadyScreen({
   nextTitle = null,
   nextThumbnailUrl = null,
 }: ReadyProps) {
-  const { s } = useLayout();
+  const { s, compact } = useLayout();
   const watchMin = Math.round(snapshot.policy.watchDurationMs / 60_000);
   const disabled = allowlistEmpty || noPlayable || continueBusy;
-
-  return (
-    <ScreenShell accessibilityLabel="Continue watching" atmosphere="ready">
-      <BrandRow />
-      <View style={[styles.readyBody, { gap: s(40) }]}>
+  const readyColumns = (
+    <>
         <View style={[styles.readyCopy, { gap: s(20) }]}>
           <Text
             style={[styles.readyTitle, { fontSize: s(64), lineHeight: s(74) }]}
@@ -150,6 +151,7 @@ export function ReadyScreen({
         <View
           style={[
             styles.nextCard,
+            compact && styles.nextCardCompact,
             {
               borderRadius: s(42),
               padding: s(32),
@@ -180,7 +182,27 @@ export function ReadyScreen({
             Up next from your allowed playlists
           </Text>
         </View>
-      </View>
+    </>
+  );
+
+  return (
+    <ScreenShell accessibilityLabel="Continue watching" atmosphere="ready">
+      <BrandRow />
+      {compact ? (
+        <ScrollView
+          style={styles.readyScroll}
+          contentContainerStyle={[
+            styles.readyBody,
+            styles.readyBodyCompact,
+            { gap: s(20), flexGrow: 1 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {readyColumns}
+        </ScrollView>
+      ) : (
+        <View style={[styles.readyBody, { gap: s(40) }]}>{readyColumns}</View>
+      )}
     </ScreenShell>
   );
 }
@@ -320,6 +342,37 @@ function requestTvFocus(node: unknown) {
   target?.requestTVFocus?.();
 }
 
+function TransportButton({
+  label,
+  onPress,
+  disabled = false,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const { s } = useLayout();
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.transportHit,
+        {
+          borderRadius: s(12),
+          paddingVertical: s(10),
+          paddingHorizontal: s(16),
+          opacity: disabled ? 0.45 : pressed ? 0.8 : 1,
+        },
+      ]}
+    >
+      <Text style={[styles.transportLabel, { fontSize: s(18) }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export function PlayingShell({
   snapshot,
   player,
@@ -335,7 +388,10 @@ export function PlayingShell({
   settingsOpen,
   onHoldPosition,
 }: PlayingProps) {
-  const { s, width, height, safeY } = useLayout();
+  const { s, width, height, safeY, compact } = useLayout();
+  const insets = useSafeAreaInsets();
+  const touchPlayback = (Platform as { isTV?: boolean }).isTV !== true;
+  const [paused, setPaused] = useState(false);
   const endCount = endingCountdown(snapshot.remainingMs);
   const [heldCount, setHeldCount] = useState<number | null>(endCount);
   const loadedRef = useRef<string | null>(null);
@@ -453,6 +509,7 @@ export function PlayingShell({
     }
     if (lastTuned.current === channelEntryId) return;
     lastTuned.current = channelEntryId;
+    setPaused(false);
     setCeremony(true);
     if (ceremonyTimer.current) clearTimeout(ceremonyTimer.current);
     ceremonyTimer.current = setTimeout(() => setCeremony(false), CEREMONY_MS);
@@ -583,6 +640,25 @@ export function PlayingShell({
   }, []);
   useTVEventHandler(onTvEvent);
 
+  const stepBy = useCallback((delta: -1 | 1) => {
+    const list = channelsRef.current;
+    if (list.length < 2) return;
+    const next = stepChannel(list, activeRef.current, delta);
+    if (!next || next.entryId === activeRef.current) return;
+    activeRef.current = next.entryId;
+    tuneRef.current(next.entryId);
+  }, []);
+
+  const togglePause = useCallback(() => {
+    if (paused) {
+      void player.play();
+      setPaused(false);
+      return;
+    }
+    void player.pause();
+    setPaused(true);
+  }, [paused, player]);
+
   const activeChannel =
     channels.find((channel) => channel.entryId === channelEntryId) ?? null;
   const readoutTitle = activeChannel?.title ?? videoTitle;
@@ -594,12 +670,20 @@ export function PlayingShell({
   const bezelGap = s(12);
   const lipPad = s(6);
   const chinMinH = Math.max(s(56), chinH);
+  const showTransport = touchPlayback && !settingsOpen;
+  const transportH = showTransport ? s(64) : 0;
   // Everything around the 16:9 glass: padding, gap, chin, and the 1px
   // bezel and lip borders on each edge.
   const borders = 2 * (styles.bezel.borderWidth + styles.lip.borderWidth);
   const chromeX = borders + 2 * (bezelPadX + lipPad);
   const chromeY =
-    borders + bezelPadTop + 2 * lipPad + bezelGap + chinMinH + bezelPadBottom;
+    borders +
+    bezelPadTop +
+    2 * lipPad +
+    bezelGap +
+    chinMinH +
+    bezelPadBottom +
+    transportH;
   // 86% wide unless that pushes the set into the TV-safe margin top and
   // bottom; then the widest bezel whose glass still clears it.
   const fitWidth = ((height - 2 * safeY - chromeY) * 16) / 9 + chromeX;
@@ -610,7 +694,15 @@ export function PlayingShell({
 
   return (
     <View
-      style={styles.playingRoot}
+      style={[
+        styles.playingRoot,
+        compact && {
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+        },
+      ]}
       accessibilityLabel="Playing"
       {...({
         trapFocusLeft: !settingsOpen,
@@ -676,7 +768,9 @@ export function PlayingShell({
                     ]}
                   >
                     {channels.length > 1
-                      ? "This watch window keeps counting down. Left or right changes the channel."
+                      ? touchPlayback
+                        ? "This watch window keeps counting down. Previous or next changes the channel."
+                        : "This watch window keeps counting down. Left or right changes the channel."
                       : "This watch window keeps counting down. Rest starts when time runs out."}
                   </Text>
                 </View>
@@ -814,8 +908,32 @@ export function PlayingShell({
                 </Animated.Text>
               </Animated.View>
             ) : null}
+            <View
+              pointerEvents="auto"
+              accessible={false}
+              importantForAccessibility="no"
+              style={styles.touchShield}
+            />
           </View>
         </View>
+        {showTransport ? (
+          <View style={[styles.transport, { gap: s(8), minHeight: transportH }]}>
+            <TransportButton
+              label="Previous"
+              disabled={channels.length < 2}
+              onPress={() => stepBy(-1)}
+            />
+            <TransportButton
+              label={paused ? "Play" : "Pause"}
+              onPress={togglePause}
+            />
+            <TransportButton
+              label="Next"
+              disabled={channels.length < 2}
+              onPress={() => stepBy(1)}
+            />
+          </View>
+        ) : null}
         <View
           style={[styles.chin, { minHeight: chinMinH }]}
           onLayout={onChinLayout}
@@ -862,11 +980,16 @@ export function PlayingShell({
 }
 
 const styles = StyleSheet.create({
+  readyScroll: { flex: 1, minHeight: 0 },
   readyBody: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     minHeight: 0,
+  },
+  readyBodyCompact: {
+    flexDirection: "column",
+    alignItems: "stretch",
   },
   readyCopy: {
     flex: 1,
@@ -887,6 +1010,7 @@ const styles = StyleSheet.create({
   availTime: { color: colors.offWhite, fontWeight: "700" },
   availLabel: { color: colors.muted, fontWeight: "500" },
   warn: { color: colors.amber },
+  nextCardCompact: { flex: 0, maxHeight: 280 },
   nextCard: {
     flex: 0.9,
     backgroundColor: colors.panelScrim,
@@ -947,6 +1071,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   keySink: { position: "absolute", width: 1, height: 1, opacity: 0 },
+  touchShield: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 8,
+    backgroundColor: "transparent",
+  },
+  transport: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  transportHit: {
+    borderWidth: 1,
+    borderColor: colors.white20,
+    backgroundColor: colors.panel2,
+  },
+  transportLabel: { color: colors.offWhite, fontWeight: "700" },
   bezel: {
     backgroundColor: TUBE.bezel,
     borderWidth: 1,
